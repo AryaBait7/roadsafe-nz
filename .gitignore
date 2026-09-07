@@ -1,0 +1,33 @@
+# --- data (never commit crash data or model artifacts) ---
+data-pipeline/data/raw/*
+data-pipeline/data/processed/*
+!data-pipeline/data/raw/.gitkeep
+!data-pipeline/data/processed/.gitkeep
+*.csv
+*.parquet
+data-pipeline/models/*
+!data-pipeline/models/.gitkeep
+
+# --- python ---
+data-pipeline/venv/
+data-pipeline/.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# --- node / next.js ---
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# --- env / secrets ---
+.env
+.env.local
+.env.*.local
+
+# --- editor / os ---
+.vscode/
+.DS_Store
+Thumbs.db
