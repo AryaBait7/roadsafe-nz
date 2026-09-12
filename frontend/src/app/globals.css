@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/* RoadSafe NZ design tokens.
+   Tailwind v4 is CSS-first: everything declared here becomes a utility
+   (--color-navy-900 -> bg-navy-900, text-navy-900, border-navy-900). */
+@theme {
+  /* Brand navy — dashboard chrome, sidebar, headings */
+  --color-navy-950: #071120;
+  --color-navy-900: #0b1b30;
+  --color-navy-800: #12263f;
+  --color-navy-700: #1b3454;
+  --color-navy-600: #27476e;
+  --color-navy-500: #365f8f;
+
+  /* Safety yellow — the single high-emphasis accent. Used sparingly:
+     active nav, primary CTA, key data highlight. */
+  --color-safety-300: #ffd65c;
+  --color-safety-400: #ffc72c;
+  --color-safety-500: #f0b000;
+
+  /* Restrained blue — secondary actions, links, informational chart series */
+  --color-accent-400: #4a8fe7;
+  --color-accent-500: #2e6fd9;
+  --color-accent-600: #1f55b0;
+
+  /* Neutral surfaces — page backgrounds, cards, borders, body text */
+  --color-surface-50: #f7f8fa;
+  --color-surface-100: #eff1f5;
+  --color-surface-200: #e3e7ee;
+  --color-surface-300: #cbd2de;
+  --color-surface-400: #9ba5b5;
+  --color-surface-500: #6b7685;
+  --color-surface-700: #3c4654;
+  --color-surface-900: #1a1f29;
+
+  /* Crash severity — ordinal ramp, consistent everywhere severity appears.
+     Chart palette gets validated properly in Stage 3. */
+  --color-severity-fatal: #a31621;
+  --color-severity-serious: #d9534f;
+  --color-severity-minor: #e8a33d;
+  --color-severity-none: #8ca0b3;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-surface-50);
+    color: var(--color-surface-900);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Visible keyboard focus everywhere — accessibility requirement.
+     :focus-visible (not :focus) so mouse clicks don't show the ring. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent-500);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Figures/statistics align in columns without jitter as values change */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Respect the OS "reduce motion" setting globally. The cinematic landing
+   intro (Stage 2) also checks this explicitly to skip its sequence. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

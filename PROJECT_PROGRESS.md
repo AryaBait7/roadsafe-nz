@@ -4,7 +4,38 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Phase 2 (Data Cleaning & EDA) — just completed.** Ready to start Phase 3 confirmation / move to Phase 4 (PostgreSQL & PostGIS) on the user's go-ahead.
+**Frontend Stage 1 (Website Foundation) — complete.** Next up: Stage 1.5 (generate real-data fixtures), then Stage 2 (cinematic landing page).
+
+> **Build order changed 2026-09-12.** The project is now frontend-first: the full interface is built against pre-aggregated real data, then the data/SQL/ML/API/AWS work is done and connected behind it. The target architecture is unchanged — see [DECISIONS.md](DECISIONS.md) #10. Data work already completed (Phases 1–3 below) still stands.
+
+## Frontend stages
+
+| Stage | Status |
+|---|---|
+| 1. Website foundation | ✅ Complete |
+| 1.5 Real-data fixture generation | 🔲 Next |
+| 2. Cinematic landing page | 🔲 |
+| 3. Dashboard | 🔲 |
+| 4–10. Trends, Map, Hotspots, Risk Factors, ML Insights, Reports, Data Dictionary | 🔲 |
+| 11–12. Responsive/UX polish, loading & error states | 🔲 (primitives already built in Stage 1) |
+
+### Stage 1 — Website Foundation (done 2026-09-12)
+
+Scaffolded in `frontend/`: **Next.js 16.3.5, React 19.2.8, Tailwind CSS v4, TypeScript 5**. Added Recharts 3.10, react-leaflet 5.0 + Leaflet 1.9, clsx, tailwind-merge — no peer conflicts.
+
+- **Design tokens** in `src/app/globals.css` using Tailwind v4's CSS-first `@theme` (navy chrome, safety-yellow accent, restrained blue, neutral surfaces, an ordinal severity ramp). Global `:focus-visible` ring and a `prefers-reduced-motion` block.
+- **Type contracts** (`src/types/api.ts`) for every planned endpoint. Each response is enveloped as `{ data, meta }` where `meta.source` is `"real"` or `"placeholder"`.
+- **Service layer** (`src/services/`) — `dashboardService`, `crashService`, `analyticsService`, `mlService`. Each method documents the endpoint that will replace it. `fixtures.ts` is the temporary source; `http.ts` is the pre-built swap point.
+- **UI primitives**: Card, Button, Badge (incl. `PlaceholderBadge` and `SeverityBadge`), Select, Skeleton.
+- **State primitives** built early so all nine pages inherit them: `ChartSkeleton`/`KpiSkeleton`/`TableSkeleton`, `EmptyState`, `ErrorState`.
+- **Layout shell**: dark navy sidebar with the 8 nav links + filter panel; collapses to a top bar + drawer below `lg`. Drawer closes on Escape, overlay click, and navigation.
+- 8 dashboard routes under an `app/(dashboard)/` route group, each with page metadata; temporary landing page at `/` pending Stage 2.
+
+Verified in-browser: routing and per-page titles work, active nav state correct, mobile drawer opens/closes, **no horizontal overflow at 375px or 1440px**, no console errors. `tsc --noEmit` and `eslint` both clean.
+
+One lint finding fixed rather than suppressed: a `useEffect` that called `setState` on pathname change was redundant (nav links already close the drawer) and was removed.
+
+## Data phases (completed before the order change)
 
 ## Completed
 
@@ -45,7 +76,7 @@ Not yet added from the original roadmap wording: night/weekend/season time-based
 
 ## Not started
 
-Phases 4–12: PostgreSQL/PostGIS, analytics layer, ML (baseline → logistic regression → random forest → XGBoost), SHAP explainability, backend API, frontend dashboard, AWS deployment, CI/CD & monitoring, portfolio polish.
+Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, analytics layer, ML (baseline → logistic regression → random forest → XGBoost), SHAP explainability, Node/Express API, wiring the frontend services to that API, AWS deployment, CI/CD & monitoring, portfolio polish.
 
 ## Problems encountered
 
@@ -56,6 +87,6 @@ Phases 4–12: PostgreSQL/PostGIS, analytics layer, ML (baseline → logistic re
 
 ## Next steps
 
-1. User to confirm: move to Phase 4 (PostgreSQL & PostGIS schema design and load), or first extend Phase 3 with the night/weekend/season time features and the `intersection`/`crashRoadSideRoad` column drop noted above.
-2. Decide how to handle the 57.3%-missing roadside-object block (fill 0 vs. drop) before it reaches feature engineering or modeling — logged as an open decision in [DECISIONS.md](DECISIONS.md).
-3. Commit the now-executed `02_eda.ipynb`, the `_build_eda_notebook.py` generator script, and the updated `requirements.txt` (matplotlib + its dependencies, added for the EDA charts) once the user reviews this progress log.
+1. **Stage 1.5** — write `data-pipeline/src/generate_frontend_fixtures.py` to turn the 285MB features CSV into the small JSON aggregates the services expect (dashboard summary, trends, severity, light conditions, road types, condition factors, hotspots, map points, filter options).
+2. **Stage 2** — cinematic landing page.
+3. Still open from the data work: drop the two 100%-empty columns (`intersection`, `crashRoadSideRoad`) from `clean_data.py`, and resolve how to treat the 57.3%-missing roadside-object block (fill 0 vs. true missing) before modelling.

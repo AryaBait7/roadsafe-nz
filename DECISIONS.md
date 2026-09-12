@@ -89,3 +89,59 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: Fixed the list in `clean_data.py` (now 8 columns) and re-ran the full pipeline (`clean_data.py` → `feature_engineering.py` → `02_eda.ipynb`) against the correction before writing up any findings, so nothing downstream is documented against stale numbers.
 
 **How to apply**: When a data quality bug is found in one or a few columns, treat it as a signal to scan the *entire* dataset for the same pattern, not just patch the specific columns noticed by chance. This generalizes past this dataset — the same logic applies to encoding bugs, unit mismatches, or any other value-level data quality issue found later in the project.
+
+---
+
+## 10. Build the frontend first, before the database, ML and API
+
+**Decision** (2026-09-12): the original 12-phase order (data → SQL → ML → API → frontend) is replaced by a frontend-first order. The full product interface is built against pre-aggregated real data, then the data/SQL/ML/API/AWS phases are worked through and progressively connected behind it.
+
+**Why**: user's call — having the complete interface and UX in place first, then learning each underlying technology systematically with a concrete target to connect to.
+
+**What did NOT change**: the target architecture. Still CAS → Python ETL → S3 → PostgreSQL/PostGIS on RDS → Python analytics/ML → Node/Express REST API → Next.js frontend → AWS. Specifically ruled out as shortcuts: swapping PostgreSQL for Supabase, querying a database directly from Next.js, coupling components to CSV files, putting analytics or ML in React.
+
+**How to apply**: any frontend work must keep the UI → service layer → data source seam intact, so replacing the temporary data source with the REST API is a change to the service modules only.
+
+---
+
+## 11. Frontend consumes pre-aggregated fixtures, never the CSV directly
+
+**Decision**: components call typed service methods (`dashboardService.getSummary()`); services read small JSON fixtures generated from the real dataset by a Python script. No component parses a CSV, and no CSV is imported into the frontend.
+
+**Why**: `cas_crash_data_features.csv` is 285MB / 705,609 rows. It cannot be shipped to a browser or parsed per request. More importantly, the future Express API will not serve 705k raw rows either — it will return exactly these aggregates. So the fixture *shape is the API contract*, and building against it now means Stage 22 swaps the service body from `loadFixture(...)` to `apiGet(...)` and nothing else changes.
+
+**How to apply**: if a new panel needs data, add a fixture + a service method with the future endpoint documented on it — never reach for the CSV from the frontend.
+
+---
+
+## 12. Every API response is enveloped with a real/placeholder provenance flag
+
+**Decision**: all responses are `{ data, meta: { source: "real" | "placeholder", note? } }`. Panels backed by `placeholder` render a visible badge.
+
+**Why**: the project rule that mock numbers must never be presentable as NZTA findings needs a mechanism, not just discipline. The ML panels have no model behind them until Stage 19, so they will carry placeholder data for a long time — long enough to forget. Making provenance part of the type system means the UI cannot silently show fake statistics.
+
+---
+
+## 13. "Crashes by time of day" is built as "crashes by light condition"
+
+**Decision**: the dashboard's time-of-day panel reports the `light` column (Bright sun / Overcast / Twilight / Dark / Unknown) instead.
+
+**Why**: verified programmatically that CAS as published has **no** time-of-day, month, day-of-week or timestamp column — across all 82 columns the only time fields are `crashYear` (integer), `crashFinancialYear` (string) and `holiday` (94.5% null, names a holiday period). A 24-hour chart would have to be fabricated. `light` is the closest real signal about conditions at the moment of the crash.
+
+**Knock-on effects**: the date-range filter operates at year granularity only, and trend charts are annual — a day/month picker would imply precision the data does not have.
+
+---
+
+## 14. Leaflet + OpenStreetMap rather than Mapbox
+
+**Decision**: `react-leaflet` for the Map Explorer.
+
+**Why**: Mapbox requires an API access token. That means secrets handling in the frontend before there is any need for it, and it conflicts with the project's no-hard-coded-credentials rule. Leaflet with OpenStreetMap tiles needs no token or account. If the map later needs something only Mapbox offers, revisit then — with Secrets Manager already in the stack.
+
+---
+
+## 15. "Contributing factors" reframed as "conditions present"
+
+**Decision**: the contributing-factors panel reports conditions *recorded as present* at crashes (weather, road surface, light, traffic control), not causes.
+
+**Why**: CAS as we have it has no cause or contributing-factor column. Labelling condition co-occurrence as a "contributing factor" would assert causation the data cannot support — the fine-weather severity finding (see PROJECT_PROGRESS.md) is a concrete example of why that inference is dangerous here.
