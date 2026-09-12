@@ -25,9 +25,15 @@ PROCESSED_PATH = Path(__file__).resolve().parent.parent / "data" / "processed" /
 
 # CAS marks missing values as the literal text "Null" in these object columns
 # (not to be confused with a real NaN, which is why df.isna() misses them
-# until we do this replacement). flatHill has the same disguised-Null bug as
-# weatherA/weatherB/roadSurface, so it's included here too.
-NULL_STRING_COLUMNS = ["weatherA", "weatherB", "roadSurface", "flatHill"]
+# until we do this replacement). Found by scanning every object column in the
+# raw data for the literal string "Null" rather than trusting a partial list —
+# streetLight (33.3% of rows) and crashDirectionDescription (37.1%) turned out
+# to have the same bug as weatherA/weatherB/roadSurface/flatHill.
+NULL_STRING_COLUMNS = [
+    "weatherA", "weatherB", "roadSurface", "flatHill",
+    "crashDirectionDescription", "directionRoleDescription",
+    "roadLane", "streetLight",
+]
 
 SEVERE_CATEGORIES = {"Fatal Crash", "Serious Crash"}
 

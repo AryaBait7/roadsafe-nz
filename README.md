@@ -46,10 +46,12 @@ python src/clean_data.py
 python src/feature_engineering.py
 ```
 
+See [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) for detailed status, [DECISIONS.md](DECISIONS.md) for the reasoning behind key choices, and [DATA_DICTIONARY.md](DATA_DICTIONARY.md) for the full column reference.
+
 ## Roadmap
 
 1. ✅ Dataset & problem definition
-2. ✅ Data cleaning — 🔲 formal EDA (missing values, duplicates, outliers, trends)
+2. ✅ Data cleaning & EDA (missing values, duplicates, outliers, trends)
 3. ✅ Feature engineering
 4. 🔲 SQL & geospatial database (PostgreSQL + PostGIS)
 5. 🔲 Analytics layer
