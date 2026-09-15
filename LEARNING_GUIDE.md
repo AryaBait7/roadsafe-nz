@@ -281,7 +281,160 @@ effect is genuinely required (external system sync).
 
 ---
 
-## 15. Verifying work instead of assuming it
+## 15. Tailwind v4 composes transforms — and collapses them to `none`
+
+**What**: the landing wordmark was supposed to emerge from the vanishing point,
+growing from `scale(0.35)` to full size. It faded in instead, with no scale at
+all. Measuring the element showed `--tw-scale-x: 100%` and
+`--tw-translate-y: 0px` set correctly, yet `transform` computing to `none`.
+
+**Why**: v4 composes `scale-*` and `translate-*` into one `transform` via
+custom properties, and at identity values it collapses the whole declaration to
+`none`. A CSS transition out of `none` has **no interpolable start value**, so
+the browser silently animates the properties it *can* (opacity, filter) and
+skips the transform. That is why blur ramped 12px → 0 correctly while the
+scale never moved.
+
+**Where**: `frontend/src/features/landing/HeroIntro.tsx` — the `h1` now sets
+`transform` inline as two explicit endpoints.
+
+**Concepts to learn**: interpolable vs non-interpolable CSS values; why
+`transform: none` and `transform: scale(1)` behave differently in transitions;
+how utility frameworks compose shorthand properties.
+
+**Interview questions**
+- Why might a CSS transition animate opacity but silently ignore transform?
+- What is the difference between `transform: none` and an identity transform?
+- How would you debug an animation that "does nothing" with no console error?
+
+---
+
+## 16. A gradient's repeat period must divide the distance you scroll it
+
+**What**: the road's lane dashes jumped once per animation cycle. The travel
+animation shifts every marking layer by exactly one 160px pitch, but the dash
+gradient was serialising to a **44px** period — and 160 / 44 is not an integer,
+so each loop restarted out of phase.
+
+**Where**: `frontend/src/features/landing/RoadScene.tsx`
+
+**Why it matters**: the shorthand `transparent 44px 160px` was being collapsed
+by the browser, dropping the final stop. Writing all four stops explicitly
+(`0px, 44px, 44px, 160px`) restored the 160px period. Verified by reading
+`backgroundImage` back from `getComputedStyle` and comparing the largest stop
+against `--marking-pitch`.
+
+**Interview questions**
+- Why must a scrolling texture's shift distance be a whole multiple of its period?
+- How would you assert a CSS animation loops seamlessly, rather than eyeballing it?
+
+---
+
+## 17. Timing probes cannot catch geometry bugs
+
+**What**: the road intro passed every automated check — phase transitions,
+the speed ramp (0.42s → 1.5s → 4s → 7s → 9s), play/pause state, seamless
+marking periods — while the road still rendered as a solid yellow wedge with
+no visible surface.
+
+**Why**: every probe measured *time and periodicity*. None measured *space*.
+Measuring the element boxes exposed the real fault instantly: the road plane's
+projected box was `y 318-496` while its container occupied `y 496-918` — the
+surface was projecting entirely outside the region it was meant to fill,
+because the rotation was pivoting on the plane's top edge instead of its bottom.
+
+**Concepts to learn**: CSS 3D `perspective`, `perspective-origin` and
+`transform-origin`; how a pivot edge changes where a rotated plane lands;
+`getBoundingClientRect` on transformed elements.
+
+**Interview questions**
+- Your tests all pass and the feature still looks wrong. What class of assertion was missing?
+- How do you verify a visual result programmatically rather than by eye?
+- What does `transform-origin` change about a `rotateX` on a ground plane?
+
+---
+
+## 18. Hydration mismatches: the server has no browser
+
+**What**: the landing intro is skipped for visitors who have already seen it
+(`sessionStorage`) or who ask for reduced motion (`matchMedia`). Resolving that
+in a lazy `useState` initialiser caused React to report *"Hydration failed
+because the server rendered text didn't match the client."*
+
+**Why**: neither API exists during server rendering. The server always rendered
+the pre-intro state — `transform: translateY(2rem) scale(0.35); opacity: 0` —
+while a returning client rendered the finished state on its very first pass.
+Same component, two different first renders, so the trees could not reconcile.
+
+**The trade-off that caused it**: an earlier version set the phase inside
+`useEffect`, which ran *after* paint and showed one frame of the intro to
+people who had opted out of motion. Moving the decision into the initialiser
+removed the flash but introduced a correctness bug. The resolution keeps both:
+render the server-identical state, then correct it in `useLayoutEffect`, which
+commits **before** the browser paints.
+
+**Where**: `frontend/src/features/landing/useIntroSequence.ts`
+
+**How it was found**: not by reading the code. The Next.js dev overlay reported
+"1 Issue", and the component stack pointed at `<HeroIntro> → <RoadScene
+phase="done">`. Confirmed independently by fetching the page HTML and diffing
+the server-rendered `style` attribute against the live hydrated DOM.
+
+**Concepts to learn**: SSR vs hydration; why `typeof window === "undefined"`
+guards do not fix mismatches (they cause them); `useLayoutEffect` vs
+`useEffect` timing; `useSyncExternalStore` for external browser state;
+`suppressHydrationWarning` and why it is usually the wrong answer.
+
+**Interview questions**
+- Why does reading `localStorage` during render break SSR?
+- What is the difference between `useEffect` and `useLayoutEffect`, and when does that difference matter visually?
+- A hydration error is "recoverable". Why fix it anyway?
+- How would you render genuinely per-user content without a mismatch?
+
+---
+
+## 19. Your instrumentation can be wrong: hidden documents freeze transitions
+
+**What**: the landing intro appeared broken for a long stretch of development.
+`getComputedStyle` reported the wordmark stuck at `scale(0.35)`, `opacity: 0`,
+`blur(12px)`, while the element's own inline style read
+`transform: translateY(0px) scale(1); opacity: 1`. An inline style with no
+competing `!important` rule cannot lose the cascade — the readings were
+impossible, and chasing them produced four wrong diagnoses in a row.
+
+**Why**: the browser pane was hidden (`document.visibilityState === "hidden"`).
+A hidden document's animation timeline does not advance, so in-flight CSS
+transitions freeze at their **start** values. `getComputedStyle` and
+`getBoundingClientRect` both report the frozen transitioned value, not the
+declared one, so they agreed with each other and were both wrong.
+`document.getAnimations()` made it obvious once inspected: six `CSSTransition`
+objects, all `playState: "running"` with `currentTime: 0`, including properties
+never animated deliberately (`column-rule-width`, `row-rule-width`) — artifacts
+of `transition-all`.
+
+Setting `transition-duration: 0s` did not rescue the measurement either: that
+governs only *newly created* transitions, while the frozen six already existed.
+
+**How it was finally settled**: a screenshot. It renders through the paint
+path rather than the DOM-query path, and showed the hero perfectly correct all
+along.
+
+**Where**: `frontend/src/features/landing/HeroIntro.tsx` (no fix was needed)
+
+**Concepts to learn**: the Page Visibility API; how hidden documents throttle
+timers and suspend animation timelines; the difference between a declared
+style, a computed style and a transitioned value; `document.getAnimations()`;
+why `transition-all` creates transitions on properties you never intended.
+
+**Interview questions**
+- Why can `getComputedStyle` disagree with an element's inline style?
+- What happens to CSS transitions and `requestAnimationFrame` in a background tab?
+- Your metrics say a feature is broken but users say it works. How do you decide which to trust?
+- What is the risk of `transition: all` beyond performance?
+
+---
+
+## 20. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

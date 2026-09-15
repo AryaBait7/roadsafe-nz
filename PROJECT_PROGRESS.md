@@ -13,7 +13,7 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 | # | Stage | Status |
 |---|---|---|
 | 1 | Audit + stabilise frontend architecture | ✅ Complete |
-| 2 | Cinematic landing page | 🔲 Next |
+| 2 | Cinematic landing page | ✅ Complete |
 | 3 | App shell: sidebar, header, routing, global filters | 🟡 Shell built; global filter state outstanding |
 | 4 | Dashboard | 🔲 |
 | 5 | Crash Trends | 🔲 |
@@ -63,6 +63,32 @@ The service layer previously pointed at fixture files that did not exist, so eve
 - **Data-quality flag**: crashes with `light = "Unknown"` show a 0.32% severe rate (32 of 9,861) — far too low to be real, so "Unknown" is likely a recording artifact rather than a category. Should be excluded from rate comparisons.
 
 Also written this stage: [ARCHITECTURE.md](ARCHITECTURE.md) and [LEARNING_GUIDE.md](LEARNING_GUIDE.md) (15 topics with interview questions).
+
+### Stage 2 — Cinematic landing page (done 2026-09-16)
+
+Built in `frontend/src/features/landing/`:
+
+- **`RoadScene.tsx`** — the moving road, drawn entirely in CSS. No video or photograph. A plane rotated under `perspective` produces a true vanishing point, so lane markings foreshorten and accelerate on their own rather than being scaled. Depth layers (posts → hills → mountains → sky) each move at their own rate.
+- **`useIntroSequence.ts`** — the 6.2s phase machine (`travel → slowing → title → reveal → done`), with Skip, Replay, once-per-session suppression via `sessionStorage`, and a reduced-motion bypass.
+- **`HeroIntro.tsx`** — wordmark emerging from the vanishing point, tagline, CTA, scroll hint. All hero text is in the DOM from first render; only its *appearance* animates, so crawlers and screen readers get the full hero regardless of phase.
+- **`LandingNav.tsx`** — transparent over the hero, solid on scroll.
+- **`LandingSections.tsx` / `Reveal.tsx`** — "What is RoadSafe NZ", five feature cards, closing CTA and footer, with IntersectionObserver reveals. A Server Component, so it ships no JS of its own.
+- **`app/page.tsx`** — pulls headline figures through `dashboardService`, so the landing page shows **real CAS aggregates** (705,609 / 41,263 / 6,182 / 2006–2026), not marketing copy.
+
+**Four genuine bugs found and fixed** (all written up in [LEARNING_GUIDE.md](LEARNING_GUIDE.md) 15–19):
+
+| Bug | Cause |
+|---|---|
+| Wordmark faded instead of travelling forward | Tailwind v4 collapses identity `scale`/`translate` to `transform: none`, which has no interpolable start value |
+| Lane dashes jumped once per loop | Gradient serialised to a 44px period while the animation shifted by 160px |
+| Road rendered as a solid wedge | The plane projected to `y 318–496` while its container occupied `496–918` — rotation pivoted on the top edge instead of the bottom |
+| Hydration mismatch | The skip decision read `matchMedia`/`sessionStorage` in a lazy `useState` initialiser; the server has neither |
+
+**Verified by measurement**: road geometry inside its wrapper and reaching the screen bottom; all three marking layers seamless (period 160 = pitch 160); transform ramp interpolating `scale(0.35) → scale(1)`; speed ramp 0.42s → 1.5s → 4s → 7s → 9s with play/pause correct per phase; zero hydration errors; session-replay suppression working; mobile 375px with **no horizontal overflow**; build and lint clean.
+
+**Known limitation**: `prefers-reduced-motion` is implemented (pre-paint bypass via `useLayoutEffect`) but **not browser-verified** — the tooling here cannot emulate that media feature. Worth confirming manually before the portfolio demo.
+
+**Process note worth keeping**: a long stretch of this stage was spent chasing a wordmark that instrumentation reported as broken and that was in fact rendering correctly. The browser pane was hidden, which freezes CSS transitions at their start values, so `getComputedStyle` and `getBoundingClientRect` both reported stale figures and agreed with each other while being wrong. A screenshot settled it. Lesson recorded as LEARNING_GUIDE #19.
 
 ### Earlier — Website Foundation (done 2026-09-12)
 

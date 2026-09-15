@@ -1,27 +1,23 @@
-import Link from "next/link";
+import { HeroIntro } from "@/features/landing/HeroIntro";
+import { LandingSections } from "@/features/landing/LandingSections";
+import { getSummary } from "@/services/dashboardService";
 
-/** Temporary. Replaced by the cinematic landing experience in Stage 2. */
-export default function LandingPage() {
+/**
+ * Public landing page.
+ *
+ * Sits outside the (dashboard) route group so it renders full-bleed with no
+ * sidebar. A Server Component: the headline figures are fetched through the
+ * same service layer the dashboard uses, so the numbers shown here are real
+ * CAS aggregates rather than marketing copy, and they stay correct when the
+ * data source becomes the API.
+ */
+export default async function LandingPage() {
+  const { data: summary } = await getSummary();
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-navy-950 px-6 text-center">
-      <p className="text-[11px] font-semibold tracking-[0.2em] text-safety-400 uppercase">
-        New Zealand Road Crash Intelligence
-      </p>
-      <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-        RoadSafe<span className="text-safety-400"> NZ</span>
-      </h1>
-      <p className="mt-4 max-w-md text-sm text-surface-300">
-        Turning crash data into safer-road insights.
-      </p>
-      <Link
-        href="/dashboard"
-        className="mt-8 inline-flex h-11 items-center rounded-md bg-safety-400 px-6 text-sm font-semibold text-navy-950 transition-colors hover:bg-safety-300"
-      >
-        Explore road safety data →
-      </Link>
-      <p className="mt-10 text-[11px] text-surface-500">
-        Placeholder landing page — the cinematic intro is built in Stage 2.
-      </p>
-    </div>
+    <>
+      <HeroIntro />
+      <LandingSections summary={summary} />
+    </>
   );
 }
