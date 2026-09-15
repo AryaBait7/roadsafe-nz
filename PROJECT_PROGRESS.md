@@ -4,7 +4,7 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 1 (Audit + stabilise frontend architecture) — complete.** Next up: Stage 2, the cinematic landing page.
+**Stage 3 (App shell + global filters) — complete.** Next up: Stage 4, the Dashboard.
 
 > **Build order changed 2026-09-12, restated 2026-09-16.** Build the complete application first, then study it via [LEARNING_GUIDE.md](LEARNING_GUIDE.md). The target architecture is unchanged — see [DECISIONS.md](DECISIONS.md) #10 and [ARCHITECTURE.md](ARCHITECTURE.md). Data work already completed (below) still stands.
 
@@ -14,7 +14,7 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 |---|---|---|
 | 1 | Audit + stabilise frontend architecture | ✅ Complete |
 | 2 | Cinematic landing page | ✅ Complete |
-| 3 | App shell: sidebar, header, routing, global filters | 🟡 Shell built; global filter state outstanding |
+| 3 | App shell: sidebar, header, routing, global filters | ✅ Complete |
 | 4 | Dashboard | 🔲 |
 | 5 | Crash Trends | 🔲 |
 | 6 | Map Explorer | 🔲 |
@@ -63,6 +63,37 @@ The service layer previously pointed at fixture files that did not exist, so eve
 - **Data-quality flag**: crashes with `light = "Unknown"` show a 0.32% severe rate (32 of 9,861) — far too low to be real, so "Unknown" is likely a recording artifact rather than a category. Should be excluded from rate comparisons.
 
 Also written this stage: [ARCHITECTURE.md](ARCHITECTURE.md) and [LEARNING_GUIDE.md](LEARNING_GUIDE.md) (15 topics with interview questions).
+
+### Stage 3 — App shell and global filters (done 2026-09-16)
+
+**The architectural decision: filter state lives in the URL, not React state.** A filtered view is shareable and survives refresh, Server Components read `searchParams` and fetch already-filtered data with no client round-trip, and the query string is already the shape the REST API will take — so Stage 23 changes the service bodies and nothing above them.
+
+A Next.js constraint shaped the split: **layouts do not receive `searchParams`, only pages do.** So the filter *panel* (in the sidebar, inside the layout) reads the URL client-side via `useSearchParams`, while each *page* parses `searchParams` server-side. `parseFilters()` makes that one line per page.
+
+Built:
+- **`src/lib/filters.ts`** — parse, serialise, describe and remove-one-filter helpers. Pure, so it runs on both sides of the boundary. Malformed values are dropped rather than coerced (`?yearFrom=banana` becomes "no filter", not year 0) and a reversed year range is swapped rather than silently matching nothing.
+- **`FilterPanel.tsx`** — holds a *pending* draft so changing a dropdown doesn't navigate on every interaction; Apply pushes the query string, Reset clears it. Draft resync on URL change uses `key={searchParams.toString()}` to remount rather than a `setState` in an effect.
+- **`FilterSummary.tsx`** — Server Component showing active-filter chips (each a link removing just that filter, with the year chip clearing both ends) plus a live match count. This is what stops the filters looking decorative.
+- **`NavIcon.tsx`** — eight hand-rolled inline SVGs rather than an icon dependency.
+- **`(dashboard)/layout.tsx`** — now async, fetches filter options once for all pages.
+- All 8 pages accept `searchParams` and render the shared summary.
+
+**Verified in the browser, both directions:**
+
+| Check | Result |
+|---|---|
+| URL → UI | `?region=Waikato+Region&yearFrom=2020&yearTo=2024` → selects show 2020 / 2024 / Waikato |
+| Option counts from real fixture | 22 years, 17 regions, 5 road types, 6 speed environments, 5 severities |
+| UI → URL | Changing Road type enabled Apply (disabled→enabled); click pushed the new query string |
+| Filtering is real | 705,609 → **19,383** (Waikato 2020–2024) → **4,582** (+ local road, open road) |
+| Cross-checked | 19,383 matches the figure the Stage 1 smoke test computed independently from the cube |
+| Reset | Cleared all params, count restored to 705,609 |
+| Chips | Remove-one links correct; year chip clears both ends; Clear all present |
+| Nav | 8 links, all with icons, `aria-current="page"` on the active item |
+| Mobile 375px | Drawer opens with 8 links + 6 selects + Apply, no horizontal overflow |
+| Build / lint | Clean |
+
+**Expected side effect**: the analytics routes moved from `○ (Static)` to `ƒ (Dynamic)` in the build output. Correct — a page whose content depends on the request's query string cannot be prerendered. The sidebar wraps `useSearchParams` in `<Suspense>` so the shell around it still prerenders.
 
 ### Stage 2 — Cinematic landing page (done 2026-09-16)
 

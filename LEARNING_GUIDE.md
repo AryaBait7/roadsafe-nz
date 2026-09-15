@@ -434,7 +434,86 @@ why `transition-all` creates transitions on properties you never intended.
 
 ---
 
-## 20. Verifying work instead of assuming it
+## 20. The URL as application state
+
+**What**: the global filters (year range, region, road type, speed environment,
+severity) live in the query string, not in React state.
+
+**Where**: `frontend/src/lib/filters.ts`, `components/layout/FilterPanel.tsx`
+
+**Why**: three separate payoffs from one decision. A filtered view becomes
+shareable and survives refresh. Server Components can read `searchParams`
+directly and fetch already-filtered data, with no client round-trip. And the
+query string is *already* the shape the REST API will take —
+`/api/crashes/trends?yearFrom=2020&region=Waikato+Region` — so Stage 23 swaps
+the service body and nothing above it changes.
+
+**The parsing rule that matters**: malformed values are dropped, not coerced.
+A hand-edited `?yearFrom=banana` degrades to "no filter" rather than year 0 or
+a crash. A reversed range (`from` after `to`) is swapped rather than silently
+matching nothing.
+
+**Concepts to learn**: URL as single source of truth; idempotent/shareable
+state; why `useState` for filters breaks the back button; query-string
+serialisation.
+
+**Interview questions**
+- Why is filter state in the URL better than in a React store?
+- How do you stop a malformed URL from breaking a page?
+- What changes in your frontend when the data source becomes a real API? (ideally: only the service layer)
+
+---
+
+## 21. Resetting state with `key` instead of an effect
+
+**What**: the filter form holds a *pending* draft so that changing a dropdown
+does not navigate on every keystroke. When the URL changes (Reset, removing a
+chip, browser back), that draft must resync.
+
+**The wrong way** — and the one the linter flags — is `useEffect(() =>
+setDraft(current), [current])`, which causes a cascading render.
+
+**The right way**: pass `key={searchParams.toString()}` to the form. React
+unmounts and remounts it, so the draft re-initialises naturally with no effect
+at all.
+
+**Where**: `frontend/src/components/layout/FilterPanel.tsx`
+
+**Concepts to learn**: `key` as an identity hint, not just a list optimisation;
+derived vs. synchronised state; "you might not need an effect".
+
+**Interview questions**
+- How do you reset a component's internal state when a prop changes?
+- Why is remounting sometimes cheaper than syncing?
+
+---
+
+## 22. Static vs dynamic rendering, and how a single hook changes it
+
+**What**: before Stage 3 the build reported every analytics route as
+`○ (Static)`. After the pages began reading `searchParams`, the same routes
+report `ƒ (Dynamic) — server-rendered on demand`.
+
+**Why it matters**: that is correct and intended here — a filtered page cannot
+be prerendered, because the filter values are only known per request. But it is
+a real trade-off to understand rather than stumble into: static pages are
+cached and near-free to serve; dynamic pages run the server on every request.
+
+**Related trap**: `useSearchParams()` in a client component opts the whole
+route out of static rendering unless it is wrapped in `<Suspense>`. The sidebar
+does exactly that so the shell can still be prerendered around the dynamic part.
+
+**Where**: `frontend/src/components/layout/Sidebar.tsx`, the eight pages under
+`app/(dashboard)/`
+
+**Interview questions**
+- What makes a Next.js route dynamic rather than static?
+- Why does `useSearchParams` require a Suspense boundary?
+- When would you deliberately keep a page static and filter on the client instead?
+
+---
+
+## 23. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

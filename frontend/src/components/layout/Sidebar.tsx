@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { navItems } from "./nav-items";
+import { NavIcon } from "./NavIcon";
 import { FilterPanel } from "./FilterPanel";
 import type { FilterOptions } from "@/types";
 
@@ -37,12 +38,13 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={onNavigate}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "block rounded-md px-3 py-2 text-sm transition-colors",
+                  "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
                   isActive
                     ? "bg-navy-700 font-medium text-white"
                     : "text-surface-300 hover:bg-navy-800 hover:text-white",
                 )}
               >
+                <NavIcon name={item.icon} />
                 {item.label}
               </Link>
             </li>
@@ -64,7 +66,11 @@ function SidebarContent({
     <>
       <Brand />
       <NavLinks onNavigate={onNavigate} />
-      <FilterPanel options={options} />
+      {/* useSearchParams would otherwise opt the whole route out of static
+          rendering; suspending it keeps the shell prerendered. */}
+      <Suspense fallback={<div className="h-64" />}>
+        <FilterPanel options={options} />
+      </Suspense>
     </>
   );
 }
@@ -102,7 +108,7 @@ export function Sidebar({ options }: { options?: FilterOptions }) {
           aria-controls="mobile-nav"
           className="rounded-md p-1.5 text-surface-300 hover:bg-navy-800 hover:text-white"
         >
-          <span className="sr-only">Open navigation</span>
+          <span className="sr-only">Open navigation and filters</span>
           <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
             <path
               d="M3 5h14M3 10h14M3 15h14"
