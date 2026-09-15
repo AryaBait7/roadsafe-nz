@@ -145,3 +145,49 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: the contributing-factors panel reports conditions *recorded as present* at crashes (weather, road surface, light, traffic control), not causes.
 
 **Why**: CAS as we have it has no cause or contributing-factor column. Labelling condition co-occurrence as a "contributing factor" would assert causation the data cannot support — the fine-weather severity finding (see PROJECT_PROGRESS.md) is a concrete example of why that inference is dangerous here.
+
+**Confirmed by the data** (2026-09-16): with a baseline severe rate of 6.72%, "adverse weather" crashes are severe only **5.93%** of the time — *below* average. Describing weather as a factor contributing to severity would state the opposite of what the dataset shows.
+
+---
+
+## 16. One aggregate cube rather than one fixture per view
+
+**Decision**: the frontend's development data source is a single pre-aggregated table (`crash-cube.json`, 47,554 rows) at the grain (year, region, roadType, speedEnvironment, severity, light, holiday), plus separate fixtures for map cells and hotspots. Services group it in memory.
+
+**Why**: the alternative — a pre-computed file per chart — cannot support filtering, because every filter combination would need its own file. The cube supports all of them. More importantly its dimensions/measures split is exactly a star schema, so `services/dev/crashCube.ts` maps one-to-one onto the SQL that replaces it at Stage 19: filters become `WHERE`, chart grouping becomes `GROUP BY`. The throwaway code teaches the real query.
+
+**Alternative considered**: shipping the 299MB CSV and parsing client-side. Rejected — impossible in a browser, and the real API will serve aggregates too, so building against raw rows would design the frontend against a contract that will never exist.
+
+---
+
+## 17. Keeping `holiday` in the cube despite the size cost
+
+**Decision**: `holiday` stays as a 7th dimension, taking the cube from 29,324 rows (3.9MB) to 47,554 rows (6.2MB).
+
+**Why**: it is the **only** seasonality signal CAS offers — there is no month, weekday or date column. It also earns its place: Labour Weekend runs an 8.85% severe rate and Christmas–New Year 8.24%, against 6.65% outside holiday periods. 6.2MB read once per server process behind a cached promise is an acceptable price for the only temporal dimension available besides year.
+
+---
+
+## 18. Column-oriented fixture payloads
+
+**Decision**: fixtures are stored as a `columns` header plus rows of bare values, decoded into objects on load, rather than as arrays of JSON objects.
+
+**Why**: repeating 15 key names across 47,554 rows roughly triples file size for no benefit. The decode is ten lines and runs once — `loadCube()` caches the *promise*, not the value, so concurrent first requests share a single parse rather than each decoding 47k rows.
+
+---
+
+## 19. Map data is published as a grid, never as individual crash coordinates
+
+**Decision**: `map-cells.json` snaps crashes to a 0.05° grid (~5.5km), giving 6,103 cells; individual crash lat/lon never reaches the browser.
+
+**Why**: two reasons. Technically, 705,609 markers cannot be rendered or transferred. Ethically, these are real incidents in which real people were killed or injured — publishing exact coordinates invites identification of specific events at specific addresses, and the product's questions ("where are the higher-risk areas") are all answerable at grid resolution. The aggregate answers the question without the exposure.
+
+**How to apply**: if a future feature seems to need individual crash points, treat that as a prompt to re-examine the question before lowering the resolution.
+
+---
+
+## 20. ML endpoints return null, not sample metrics
+
+**Decision**: `mlService.getModelMetrics()` and `getFeatureImportance()` return `data: null` with `meta.source: "placeholder"` until a model exists (Stage 20). The ML Insights page will render an explicit "awaiting model" state.
+
+**Why**: the obvious alternative is plausible-looking placeholder numbers so the page looks finished. But a reader cannot distinguish a placeholder precision of 0.81 from a measured one, and a screenshot of that page in a portfolio would be a false claim about a model that does not exist. Returning null makes the absence structural rather than a matter of remembering to add a caveat.

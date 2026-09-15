@@ -1,4 +1,3 @@
-import { loadFixture } from "./fixtures";
 import type {
   ApiResponse,
   FeatureImportanceItem,
@@ -6,19 +5,32 @@ import type {
 } from "@/types";
 
 /**
- * Model performance and explainability.
+ * Crash-severity model performance and explainability.
  *
- * No model exists until Stage 19, so both fixtures are marked
- * `meta.source: "placeholder"` and the UI renders them behind a visible
- * placeholder badge. These numbers are not NZTA findings and are not
- * presented as any.
+ * No model has been trained yet — that is Stage 20. These return `null`
+ * rather than invented metrics: publishing a plausible-looking precision or
+ * feature ranking would misrepresent model performance, and a reader has no
+ * way to tell a placeholder 0.81 from a measured one. The UI renders an
+ * explicit "awaiting model" state instead.
+ *
+ * When the model exists, these read `model-metrics` / `feature-importance`
+ * fixtures written by the training script, and `meta.source` becomes "real".
  */
-export async function getModelMetrics(): Promise<ApiResponse<ModelMetrics>> {
-  return loadFixture<ApiResponse<ModelMetrics>>("model-metrics");
+const AWAITING_MODEL = {
+  source: "placeholder",
+  note:
+    "No model has been trained yet (Stage 20). No figures are shown because " +
+    "fabricated metrics cannot be distinguished from measured ones.",
+} as const;
+
+export async function getModelMetrics(): Promise<
+  ApiResponse<ModelMetrics | null>
+> {
+  return { data: null, meta: { ...AWAITING_MODEL } };
 }
 
 export async function getFeatureImportance(): Promise<
-  ApiResponse<FeatureImportanceItem[]>
+  ApiResponse<FeatureImportanceItem[] | null>
 > {
-  return loadFixture<ApiResponse<FeatureImportanceItem[]>>("feature-importance");
+  return { data: null, meta: { ...AWAITING_MODEL } };
 }

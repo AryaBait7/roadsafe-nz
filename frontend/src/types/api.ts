@@ -166,6 +166,27 @@ export interface FilterOptions {
   roadTypes: string[];
   speedEnvironments: string[];
   severities: CrashSeverity[];
+  lightConditions: string[];
   yearMin: number;
   yearMax: number;
+  /**
+   * The most recent year is a partial year of data. Trend charts exclude it
+   * by default so the series does not appear to collapse at the right edge.
+   */
+  latestYearIsPartial: boolean;
+  partialYearNote: string | null;
+}
+
+/**
+ * GET /api/crashes/holidays
+ *
+ * The closest thing CAS offers to seasonality: crashes are tagged with the
+ * public-holiday period they fell in, or none. There is no month or
+ * day-of-week column to chart instead.
+ */
+export interface HolidayBreakdown {
+  period: string;
+  crashCount: number;
+  severeCount: number;
+  severeRate: number;
 }

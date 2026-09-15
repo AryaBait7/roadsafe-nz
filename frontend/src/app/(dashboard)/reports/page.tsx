@@ -13,7 +13,7 @@ export default function ReportsPage() {
       <div className="p-6">
         <EmptyState
           title="Not built yet"
-          description="This page is scheduled for Stage 9."
+          description="This page is scheduled for Stage 10."
         />
       </div>
     </>

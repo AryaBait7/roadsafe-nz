@@ -13,7 +13,7 @@ export default function RiskFactorsPage() {
       <div className="p-6">
         <EmptyState
           title="Not built yet"
-          description="This page is scheduled for Stage 7."
+          description="This page is scheduled for Stage 8."
         />
       </div>
     </>

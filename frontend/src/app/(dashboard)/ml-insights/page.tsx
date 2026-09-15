@@ -13,7 +13,7 @@ export default function MlInsightsPage() {
       <div className="p-6">
         <EmptyState
           title="Not built yet"
-          description="This page is scheduled for Stage 8."
+          description="This page is scheduled for Stage 9."
         />
       </div>
     </>

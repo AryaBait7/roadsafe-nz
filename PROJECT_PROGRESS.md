@@ -4,22 +4,67 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Frontend Stage 1 (Website Foundation) — complete.** Next up: Stage 1.5 (generate real-data fixtures), then Stage 2 (cinematic landing page).
+**Stage 1 (Audit + stabilise frontend architecture) — complete.** Next up: Stage 2, the cinematic landing page.
 
-> **Build order changed 2026-09-12.** The project is now frontend-first: the full interface is built against pre-aggregated real data, then the data/SQL/ML/API/AWS work is done and connected behind it. The target architecture is unchanged — see [DECISIONS.md](DECISIONS.md) #10. Data work already completed (Phases 1–3 below) still stands.
+> **Build order changed 2026-09-12, restated 2026-09-16.** Build the complete application first, then study it via [LEARNING_GUIDE.md](LEARNING_GUIDE.md). The target architecture is unchanged — see [DECISIONS.md](DECISIONS.md) #10 and [ARCHITECTURE.md](ARCHITECTURE.md). Data work already completed (below) still stands.
 
-## Frontend stages
+## Stages
 
-| Stage | Status |
+| # | Stage | Status |
+|---|---|---|
+| 1 | Audit + stabilise frontend architecture | ✅ Complete |
+| 2 | Cinematic landing page | 🔲 Next |
+| 3 | App shell: sidebar, header, routing, global filters | 🟡 Shell built; global filter state outstanding |
+| 4 | Dashboard | 🔲 |
+| 5 | Crash Trends | 🔲 |
+| 6 | Map Explorer | 🔲 |
+| 7 | Hotspots | 🔲 |
+| 8 | Risk Factors | 🔲 |
+| 9 | ML Insights | 🔲 |
+| 10 | Reports | 🔲 |
+| 11 | Data Dictionary | 🔲 |
+| 12 | Responsive/mobile | 🟡 Shell is responsive; per-page work pending |
+| 13 | Animation + UX polish | 🔲 |
+| 14 | Loading/error/empty states | 🟡 Primitives built; per-page wiring pending |
+| 15 | Consistency + accessibility pass | 🔲 |
+| 16 | Frontend testing + performance | 🔲 |
+| 17–21 | Data pipeline, PostGIS, analytics, ML, explainability | 🟡 Pipeline + EDA + features done (see below) |
+| 22 | Node/Express REST API | 🔲 |
+| 23 | Connect frontend to real API | 🔲 |
+| 24–27 | AWS, CI/CD, testing, portfolio docs | 🔲 |
+
+### Stage 1 part B — data layer (done 2026-09-16)
+
+The service layer previously pointed at fixture files that did not exist, so every data-backed page would have thrown. Built the real data source:
+
+- **`data-pipeline/src/generate_frontend_fixtures.py`** turns the 299MB features CSV into 7.8MB of committed JSON: `crash-cube.json` (47,554 aggregate rows, 7 dimensions × 8 measures), `map-cells.json` (6,103 grid cells × year), `hotspots.json` (68 territorial authorities), `filter-options.json`.
+- **`src/services/dev/crashCube.ts`** — in-memory query engine over the cube, caching the parse promise. Deliberately mirrors the SQL that replaces it at Stage 19.
+- **All four services rewritten** against real data. `mlService` returns `null` + `placeholder` rather than invented metrics ([DECISIONS.md](DECISIONS.md) #20).
+- Added `getHolidayBreakdown()` — the only seasonality dimension CAS supports.
+
+**Verified by execution, not assumption.** A temporary route exercised every service and re-totalled the output; it was deleted afterwards. All reconciliations passed against figures measured independently from the CSV:
+
+| Check | Result |
 |---|---|
-| 1. Website foundation | ✅ Complete |
-| 1.5 Real-data fixture generation | 🔲 Next |
-| 2. Cinematic landing page | 🔲 |
-| 3. Dashboard | 🔲 |
-| 4–10. Trends, Map, Hotspots, Risk Factors, ML Insights, Reports, Data Dictionary | 🔲 |
-| 11–12. Responsive/UX polish, loading & error states | 🔲 (primitives already built in Stage 1) |
+| Total crashes | 705,609 ✅ |
+| Serious / Fatal | 41,263 / 6,182 ✅ |
+| People killed / injured | 6,911 / 280,236 ✅ |
+| Severity sum re-totals | 705,609 ✅ |
+| Map cell sum re-totals | 705,609 ✅ |
+| Hotspot sum re-totals | 705,609 ✅ |
+| Filtering (Waikato 2020–2024) | 19,383 crashes ✅ |
+| Partial-year detection | 2026 auto-flagged ✅ |
 
-### Stage 1 — Website Foundation (done 2026-09-12)
+**Findings that will shape the UI:**
+- **Local road – open road is the most dangerous category**: 12.15% severe rate, higher than state highway – open road (8.84%) and more than double local road – urban (5.03%).
+- **Unsealed roads**: 12.95% severe vs the 6.72% baseline.
+- **Adverse weather is *below* baseline** at 5.93%. Consistent with the earlier fine-weather finding — the language on the Risk Factors page must not imply weather worsens severity.
+- **Holiday periods are genuinely worse**: Labour Weekend 8.85%, Christmas–NY 8.24%, vs 6.65% outside holidays.
+- **Data-quality flag**: crashes with `light = "Unknown"` show a 0.32% severe rate (32 of 9,861) — far too low to be real, so "Unknown" is likely a recording artifact rather than a category. Should be excluded from rate comparisons.
+
+Also written this stage: [ARCHITECTURE.md](ARCHITECTURE.md) and [LEARNING_GUIDE.md](LEARNING_GUIDE.md) (15 topics with interview questions).
+
+### Earlier — Website Foundation (done 2026-09-12)
 
 Scaffolded in `frontend/`: **Next.js 16.3.5, React 19.2.8, Tailwind CSS v4, TypeScript 5**. Added Recharts 3.10, react-leaflet 5.0 + Leaflet 1.9, clsx, tailwind-merge — no peer conflicts.
 
