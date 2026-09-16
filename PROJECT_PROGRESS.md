@@ -4,7 +4,21 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 8 (Risk Factors) — complete.** Next up: Stage 9 (ML Insights).
+**Stage 9 (ML Insights) — complete as an honest pre-model page.** Next up: Stage 10 (Reports).
+
+### Stage 9 — ML Insights (done 2026-09-16)
+
+No model exists until Stage 20, so no performance figure appears anywhere. Rather than an empty page, it shows what is **already real** about the model:
+
+- **Target and imbalance** — `is_severe` is 47,445 of 705,609 crashes (6.72%).
+- **Reference baselines**, labelled as such — always predicting "not severe" scores 93.3% accuracy and 0% recall; random ranking gives PR-AUC equal to the prevalence (0.067). These follow arithmetically from the class balance and set the bar a model must clear.
+- **Planned chronological split with real row counts** — train 2006–2019 (502,946, 6.4% severe), validation 2020–2021 (66,976, 6.6%), test 2022–2025 (121,114, 7.8%), with 2026 held out as partial. Sums reconcile to 705,609. The rising rate is the concrete argument against a random split.
+- **Candidate features** (real columns only) and **leakage exclusions** (`fatalCount`, `seriousInjuryCount`, `minorInjuryCount`, `crashSeverity`, `OBJECTID`) with reasons.
+- **Candidate models** (logistic regression baseline; random forest and XGBoost challengers), each marked "Not trained".
+
+Performance tiles, confusion matrix, feature importance/SHAP and the scenario explorer are laid out with "—" values and placeholder badges. The page states plainly that the model estimates severity *given a crash occurred* and cannot predict whether one will happen, and that sidebar filters do not apply (the model trains once on the full dataset).
+
+New: `getTrainingDataProfile()` in `mlService` (meta `source: "real"`), `DatasetSplit` and `TrainingDataProfile` types.
 
 ### Stage 8 — Risk Factors (done 2026-09-16)
 

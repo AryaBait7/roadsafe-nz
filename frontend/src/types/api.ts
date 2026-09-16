@@ -229,6 +229,38 @@ export interface ModelMetrics {
   testYears: [number, number];
 }
 
+/** One chronological slice of the planned training data. */
+export interface DatasetSplit {
+  name: "Train" | "Validation" | "Test";
+  yearFrom: number;
+  yearTo: number;
+  rows: number;
+  severeRows: number;
+  severeRate: number;
+}
+
+/**
+ * GET /api/ml/training-data
+ *
+ * Facts about the data the model will be trained on. Real now, before any
+ * model exists: the target, its class balance and the planned time-based
+ * split are properties of the dataset, not results.
+ */
+export interface TrainingDataProfile {
+  target: string;
+  positiveLabel: string;
+  totalRows: number;
+  positiveRows: number;
+  /** Share of rows in the positive class, 0–1. */
+  prevalence: number;
+  splits: DatasetSplit[];
+  /** Incomplete year left out of every split, if any. */
+  heldOutYear: number | null;
+  candidateFeatures: { name: string; description: string }[];
+  /** Columns that encode the outcome and must never be model inputs. */
+  leakageExcluded: { name: string; reason: string }[];
+}
+
 /** GET /api/ml/feature-importance — placeholder until Stage 19/20. */
 export interface FeatureImportanceItem {
   feature: string;
