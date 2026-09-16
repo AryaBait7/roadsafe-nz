@@ -1,57 +1,99 @@
 import Link from "next/link";
 import { Reveal } from "./Reveal";
-import { formatNumber, formatYearRange } from "@/lib/formatters";
-import type { DashboardSummary } from "@/types";
+import { NewsSection } from "./NewsSection";
+import { CountUp, type CountUpFormat } from "@/components/ui/CountUp";
+import { NavIcon, type NavIconName } from "@/components/layout/NavIcon";
+import type { DashboardSummary, NewsItem } from "@/types";
 
 /**
  * Everything below the hero.
  *
- * A Server Component: none of this is interactive beyond the Reveal wrappers,
- * so it ships no JavaScript of its own. The figures are real aggregates
+ * A Server Component: only the counters and reveal wrappers are interactive,
+ * so the bulk of this ships no JavaScript. The figures are real aggregates
  * passed down from the page, not marketing copy.
  */
 
-const FEATURES = [
+const FEATURES: {
+  title: string;
+  href: string;
+  icon: NavIconName;
+  description: string;
+}[] = [
   {
     title: "Crash Analytics",
     href: "/crash-trends",
+    icon: "trends",
     description:
       "Twenty-one years of crash volume and severity, broken down by region, road type and speed environment.",
   },
   {
     title: "Interactive Maps",
     href: "/map-explorer",
+    icon: "map",
     description:
       "Every crash placed on the map, aggregated into a density grid you can pan, zoom and filter across the country.",
   },
   {
     title: "Crash Hotspots",
     href: "/hotspots",
+    icon: "hotspots",
     description:
       "Which territorial authorities carry the highest crash concentrations, and how severe those crashes are.",
   },
   {
     title: "Risk Factors",
     href: "/risk-factors",
+    icon: "risk",
     description:
       "The road, weather and light conditions recorded at severe crashes — reported as associations, never as causes.",
   },
   {
     title: "Machine Learning Insights",
     href: "/ml-insights",
+    icon: "ml",
     description:
       "A severity model that estimates how serious a crash is likely to be, given that a crash has occurred.",
   },
-] as const;
+];
 
-export function LandingSections({ summary }: { summary: DashboardSummary }) {
-  const stats = [
-    { value: formatNumber(summary.totalCrashes), label: "Crashes analysed" },
-    { value: formatNumber(summary.seriousCrashes), label: "Serious crashes" },
-    { value: formatNumber(summary.fatalCrashes), label: "Fatal crashes" },
+export function LandingSections({
+  summary,
+  news = [],
+}: {
+  summary: DashboardSummary;
+  news?: NewsItem[];
+}) {
+  // `format` is a name, not a function: this is a Server Component and only
+  // serialisable props may cross into a Client Component.
+  const stats: {
+    label: string;
+    value: number;
+    format: CountUpFormat;
+    prefix?: string;
+  }[] = [
     {
-      value: formatYearRange(summary.yearFrom, summary.yearTo),
+      label: "Crashes analysed",
+      value: summary.totalCrashes,
+      format: "number",
+    },
+    {
+      label: "Serious crashes",
+      value: summary.seriousCrashes,
+      format: "number",
+    },
+    {
+      label: "Fatal crashes",
+      value: summary.fatalCrashes,
+      format: "number",
+    },
+    {
       label: "Years covered",
+      value: summary.yearTo,
+      // Only the end of the range counts up; animating both ends would show a
+      // nonsensical range on every intermediate frame. Years are unformatted —
+      // grouped thousands would render 2,026.
+      format: "plain",
+      prefix: `${summary.yearFrom}–`,
     },
   ];
 
@@ -77,12 +119,23 @@ export function LandingSections({ summary }: { summary: DashboardSummary }) {
           </Reveal>
 
           <Reveal delay={120}>
-            <dl className="mt-14 grid grid-cols-2 gap-x-6 gap-y-10 border-t border-surface-200 pt-10 lg:grid-cols-4">
+            <dl className="mt-14 grid grid-cols-2 gap-x-6 gap-y-9 border-t border-surface-200 pt-10 lg:grid-cols-4">
               {stats.map((stat) => (
                 <div key={stat.label}>
-                  <dt className="text-xs text-surface-500">{stat.label}</dt>
-                  <dd className="tabular mt-1.5 text-3xl font-semibold text-navy-900">
-                    {stat.value}
+                  {/* A short accent rule instead of an icon: enough hierarchy
+                      to separate the figures, without turning restrained
+                      statistics into decorated cards. */}
+                  <span
+                    aria-hidden
+                    className="block h-0.5 w-7 rounded-full bg-safety-400"
+                  />
+                  <dt className="mt-3 text-xs text-surface-500">{stat.label}</dt>
+                  <dd className="mt-1.5 text-3xl font-semibold text-navy-900 sm:text-4xl">
+                    <CountUp
+                      value={stat.value}
+                      format={stat.format}
+                      prefix={stat.prefix}
+                    />
                   </dd>
                 </div>
               ))}
@@ -106,21 +159,37 @@ export function LandingSections({ summary }: { summary: DashboardSummary }) {
             </h2>
           </Reveal>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {/* `items-stretch` plus `h-full` on each card keeps every card the
+              same height regardless of description length. */}
+          <div className="mt-12 grid items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((feature, index) => (
-              <Reveal key={feature.href} delay={index * 80}>
+              <Reveal key={feature.href} delay={index * 80} className="h-full">
                 <Link
                   href={feature.href}
-                  className="group block h-full rounded-lg border border-surface-200 bg-white p-6 shadow-sm transition-colors hover:border-accent-400"
+                  className="group flex h-full flex-col rounded-lg border border-surface-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-md"
                 >
-                  <h3 className="text-sm font-semibold text-navy-900">
+                  <span
+                    aria-hidden
+                    className="grid size-9 place-items-center rounded-md bg-accent-500/10 text-accent-600 transition-colors duration-200 group-hover:bg-accent-500/15"
+                  >
+                    <NavIcon name={feature.icon} size={18} />
+                  </span>
+
+                  <h3 className="mt-4 text-sm font-semibold text-navy-900">
                     {feature.title}
                   </h3>
-                  <p className="mt-2.5 text-sm leading-relaxed text-surface-500">
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-surface-500">
                     {feature.description}
                   </p>
-                  <span className="mt-4 inline-block text-xs font-medium text-accent-600 transition-transform group-hover:translate-x-0.5">
-                    Open →
+
+                  <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-accent-600">
+                    Open
+                    <span
+                      aria-hidden
+                      className="transition-transform duration-200 group-hover:translate-x-0.5"
+                    >
+                      →
+                    </span>
                   </span>
                 </Link>
               </Reveal>
@@ -128,6 +197,8 @@ export function LandingSections({ summary }: { summary: DashboardSummary }) {
           </div>
         </div>
       </section>
+
+      <NewsSection items={news} />
 
       <section className="bg-navy-950 px-6 py-20 sm:py-24">
         <div className="mx-auto max-w-3xl text-center">
@@ -155,9 +226,7 @@ export function LandingSections({ summary }: { summary: DashboardSummary }) {
             Source: Waka Kotahi NZ Transport Agency, Crash Analysis System (CAS)
             open data.
           </p>
-          <p>
-            RoadSafe NZ — a portfolio project. Not an official NZTA service.
-          </p>
+          <p>RoadSafe NZ — a portfolio project. Not an official NZTA service.</p>
         </div>
       </footer>
     </>

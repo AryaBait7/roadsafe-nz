@@ -51,7 +51,21 @@ export function Reveal({
     );
 
     observer.observe(element);
-    return () => observer.disconnect();
+
+    /**
+     * Content must never depend on an observer to become visible.
+     *
+     * These children start at opacity 0, so if the observer never fires —
+     * an unsupported browser, a suspended document — the section stays
+     * invisible permanently. That is a far worse outcome than an entrance
+     * animation being skipped, so this guarantees the reveal regardless.
+     */
+    const guarantee = window.setTimeout(() => setShown(true), 4000);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(guarantee);
+    };
     // Runs once: `shown` only ever goes false -> true, and once it is true
     // there is nothing left to observe.
     // eslint-disable-next-line react-hooks/exhaustive-deps

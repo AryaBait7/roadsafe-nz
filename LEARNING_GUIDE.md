@@ -657,7 +657,66 @@ antimeridian breaks naive map bounds.
 
 ---
 
-## 28. Verifying work instead of assuming it
+## 28. Never let content depend on an observer firing
+
+**What**: two components on the landing page hid their own content until an
+`IntersectionObserver` told them to show it — `CountUp` started at zero, and
+`Reveal` started at `opacity: 0`. Both were written assuming the observer
+would always fire.
+
+**Why that is a bug, not a nicety**: if the observer never fires — an
+unsupported browser, a suspended or backgrounded document — the page does not
+merely skip an animation. The counter displays **"0 crashes analysed"** and the
+revealed section stays **permanently invisible**. A wrong number and missing
+content are far worse outcomes than a missing transition.
+
+**The fix**: arm a fallback timer at mount, *independent of the observer*,
+that puts the component into its final state. The first version armed that
+timer inside the observer callback, which is useless precisely when the
+observer is the thing that failed.
+
+**The related rule**: the server renders the *final* value, so anyone without
+JavaScript, and anyone who asked for reduced motion, reads the real figure with
+no animation involved. The animation only ever degrades the presentation, never
+the content.
+
+**Where**: `frontend/src/components/ui/CountUp.tsx`,
+`frontend/src/features/landing/Reveal.tsx`
+
+**Concepts to learn**: progressive enhancement; graceful degradation;
+`IntersectionObserver` support and when it does not fire; why timers are
+throttled in background tabs while `requestAnimationFrame` stops entirely.
+
+**Interview questions**
+- Your scroll animation does not run. What should the user see?
+- What is the difference between degrading the presentation and degrading the content?
+- Why render the final value on the server and animate afterwards, rather than starting from zero?
+
+---
+
+## 29. Server and Client Component boundaries are serialisation boundaries
+
+**What**: passing `format: formatNumber` — an ordinary function — from a
+Server Component into a Client Component failed the build with *"Functions
+cannot be passed directly to Client Components."*
+
+**Why**: props crossing that boundary are serialised and sent over the wire.
+A function has no serialised form. TypeScript accepted it happily; only the
+framework caught it.
+
+**The fix**: pass a serialisable *name* (`format: "number" | "plain"`) and keep
+the formatter inside the client component.
+
+**Where**: `frontend/src/components/ui/CountUp.tsx`
+
+**Interview questions**
+- What kinds of value can cross the server/client boundary in the App Router?
+- How would you let a Server Component configure client-side behaviour?
+- Why did TypeScript not catch this?
+
+---
+
+## 30. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

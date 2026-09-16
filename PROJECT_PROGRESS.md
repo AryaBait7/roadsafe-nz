@@ -4,7 +4,27 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 6 (Map Explorer) — complete**, including the dashboard hotspots map that was outstanding from Stage 4. Next up: Stage 7 (Hotspots).
+**UI refinement pass complete** (road intro rebuild, compact dashboard, landing page). Next up: Stage 7 (Hotspots).
+
+### UI refinement (2026-09-16)
+
+Seven requested changes, all against the existing components — no rebuild.
+
+**Road intro rebuilt as a real 3D scene.** The old version scrolled a gradient texture across a tilted plane, which cannot produce guardrail posts that pass the camera or a sign you approach, because a texture contains no objects. Now every element sits at a real depth in a `preserve-3d` world with one rAF-driven camera; perspective does the rest at one transform write per frame. Measured: the sign grows 49.7px → 297.1px (6.0×, monotonic). The intro also plays on **every** visit to `/` — it was previously suppressed by a `sessionStorage` flag, so returning home silently lost the opening.
+
+**Dashboard reworked to the reference.** 12-column grid at 5/3/4, map holding the left five columns across both lower rows. Density came from padding, gaps and control heights, not type size: **1,117px tall at 1440×900**, so all but ~200px is in the first screen. Severity became a donut (values in the legend, so the 0.9% Fatal slice never needs an in-arc label). KPI cards became five equal peers with real period-over-period deltas, coloured by whether the movement is *good* — fewer crashes is green.
+
+**Landing page**: count-up statistics, polished explore cards, and a data-driven news section rendering labelled placeholders until real items are supplied.
+
+**Three bugs found that all passed automated checks:**
+
+| Bug | Why checks missed it |
+|---|---|
+| Dark basemap served watermarked tiles | CARTO returns HTTP 200 with "API KEY REQUIRED" stamped on unkeyed tiles, so `tilesLoaded: 6` was true and meaningless. Replaced with OSM tiles darkened by a CSS filter on the tile pane |
+| Map rendered no cells inside the flex card | Leaflet cached a stale container size measured before flex resolved, drawing cells outside the viewport. Tiles still loaded fine. Fixed with explicit height + `ResizeObserver` → `invalidateSize` |
+| Counters and reveals could strand at zero/invisible | Both depended on an `IntersectionObserver` that might never fire. Fallback timers now armed at mount, independent of the observer |
+
+**Known limitation**: `requestAnimationFrame` does not fire in the preview pane, so the road animation and the count-up motion could not be observed here. The projection maths and final values are verified; the motion itself needs checking in a real browser.
 
 > **Build order changed 2026-09-12, restated 2026-09-16.** Build the complete application first, then study it via [LEARNING_GUIDE.md](LEARNING_GUIDE.md). The target architecture is unchanged — see [DECISIONS.md](DECISIONS.md) #10 and [ARCHITECTURE.md](ARCHITECTURE.md). Data work already completed (below) still stands.
 
