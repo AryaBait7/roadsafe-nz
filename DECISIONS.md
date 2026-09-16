@@ -295,3 +295,11 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: the server renders final values; `CountUp` and `Reveal` arm a fallback timer at mount.
 
 **Why**: an IntersectionObserver that never fires (hidden tab, print, odd viewport) left statistics at 0 and sections invisible. Animation is an enhancement, never a dependency.
+
+---
+
+## 34. The data dictionary is measured, and its prose has one source
+
+**Decision**: `generate_data_dictionary.py` profiles the CSV for types, missing %, distinct counts and examples. It parses descriptions from DATA_DICTIONARY.md and reports undocumented or stale entries. Search on the page is local state, not URL state.
+
+**Why**: typing figures in by hand invites drift, and that already happened: the markdown said 28 roadside-object columns when 21 exist. Parsing the markdown avoids keeping two copies of the prose. Search terms are ephemeral and not worth a shareable URL. Keeping them local also keeps the page static, unlike the filter state in #22.

@@ -78,7 +78,7 @@ All of the following are counts of that vehicle type involved in the crash (0, 1
 
 ## Roadside objects struck (counts per crash)
 
-This entire block of 28 columns is missing for the exact same 57.3% of rows (403,996 rows). Confirmed this is **not** a mid-history schema change (populated across the full 2006–2026 range) — working theory is NaN means "not struck," functionally 0, rather than "not recorded." **Not yet resolved** — see DECISIONS.md #5.
+This entire block of 21 columns is missing for the exact same 57.3% of rows (403,996 rows). Confirmed this is **not** a mid-history schema change (populated across the full 2006–2026 range) — working theory is NaN means "not struck," functionally 0, rather than "not recorded." **Not yet resolved** — see DECISIONS.md #5.
 
 `bridge`, `cliffBank`, `debris`, `ditch`, `fence`, `guardRail`, `houseOrBuilding`, `kerb`, `objectThrownOrDropped`, `otherObject`, `overBank`, `parkedVehicle`, `phoneBoxEtc`, `postOrPole`, `roadworks`, `slipOrFlood`, `strayAnimal`, `trafficIsland`, `trafficSign`, `tree`, `waterRiver`
 

@@ -297,3 +297,32 @@ export interface HolidayBreakdown {
   severeCount: number;
   severeRate: number;
 }
+
+/** How a column relates to the planned severity model. A plan, not a result. */
+export type MlRole = "Target" | "Candidate" | "Excluded" | "No";
+
+/** One CAS column, profiled from the dataset. */
+export interface DataDictionaryField {
+  name: string;
+  group: string;
+  /** From DATA_DICTIONARY.md; null if the column is not yet described. */
+  description: string | null;
+  type: "Integer" | "Decimal" | "Text" | "Boolean" | "Empty";
+  /** Most common value, or the first value for all-unique columns. */
+  example: string | null;
+  /** 0–100. */
+  missingPct: number;
+  distinct: number;
+  /** Created by the pipeline rather than shipped by CAS. */
+  derived: boolean;
+  usedInDashboard: boolean;
+  ml: MlRole;
+}
+
+/** GET /api/dataset/dictionary */
+export interface DataDictionary {
+  rowCount: number;
+  columnCount: number;
+  sourceFile: string;
+  fields: DataDictionaryField[];
+}

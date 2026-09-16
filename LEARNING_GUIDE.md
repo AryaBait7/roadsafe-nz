@@ -800,7 +800,21 @@ print dialog with print-only styles.
 
 ---
 
-## 35. Verifying work instead of assuming it
+## 35. Data profiling and documentation that cannot drift
+
+**What**: the Data Dictionary page is generated. Types, missing % and examples are measured on every run, while descriptions are parsed from the markdown. The script fails loudly by printing columns that have no description, and descriptions whose column has disappeared. Integer counts that pandas stores as floats (because NaN forces float) are reported as Integer.
+
+**Why it matters**: data documentation goes stale silently. Generating it from the data keeps it honest.
+
+**Interview questions**
+- Why does a column of whole numbers load as `float64` in pandas?
+- What is the difference between "missing" and "not applicable"? Use `holiday` and `pedestrian` as examples.
+- How would you keep a data dictionary in sync in a production pipeline? (profiling in CI, or data contracts / Great Expectations)
+- Why choose the mode as the example value, and when is that a bad choice?
+
+---
+
+## 36. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

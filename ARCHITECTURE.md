@@ -1,7 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
-Reflects the implementation as of Stage 10 (2026-09-17).
+Reflects the implementation as of Stage 11 (2026-09-17).
 
 ## Target architecture
 
@@ -77,6 +77,7 @@ fixture shape *is* the API contract.
 | dashboardService | `getSummary`, `getSummaryComparison`, `getFilterOptions` | `/api/dashboard/summary` |
 | crashService | `getTrends`, `getSeverityBreakdown`, `getSeverityTrends`, `getLightConditions`, `getRoadTypes`, `getRegionBreakdown`, `getHolidayBreakdown`, `getMapPoints`, `getMapGridDegrees` | `/api/crashes/*`, `/api/map/crashes` |
 | analyticsService | `getContributingFactors`, `getSeverityLift`, `getBaselineSevereRate`, `getHotspots`, `getHotspotDetail` | `/api/crashes/factors`, `/api/risk-factors`, `/api/hotspots[/{id}]` |
+| datasetService | `getDataDictionary` | `/api/dataset/dictionary` |
 | mlService | `getModelMetrics`, `getFeatureImportance` (null until Stage 20), `getTrainingDataProfile` (real) | `/api/ml/*` |
 
 `getSummaryComparison` returns the selected period and the equivalent
@@ -92,7 +93,7 @@ cas_crash_data.csv (191MB, gitignored)
 cas_crash_data_clean.csv (269MB, gitignored)
    |  feature_engineering.py        vehicle counts, condition flags, hazard score, speed bins
 cas_crash_data_features.csv (299MB, gitignored)
-   |  generate_frontend_fixtures.py
+   |  generate_frontend_fixtures.py     (+ generate_data_dictionary.py, which also reads DATA_DICTIONARY.md)
 frontend/src/data/fixtures/*.json (~7.4MB, committed)
    |  loadFixture() + services/dev/crashCube.ts
 services
@@ -111,6 +112,7 @@ fixtures requires it.
 | `map-cells.json` | 1.1MB | 6,103 cells `[lat, lon, regionIndex]` + 61,008 rows `[cellIndex, year, crashes, severe]` | Map Explorer, dashboard map |
 | `hotspots.json` | 0.2MB | 68 areas + rows `[areaIndex, year, severity, crashes]` | Hotspots ranking and detail |
 | `filter-options.json` | 1KB | Dimension values, year range, partial-year flag | Global filters |
+| `data-dictionary.json` | 25KB | 82 profiled columns: measured type, missing %, distinct, example; described in markdown | Data Dictionary |
 
 ### The cube
 
@@ -175,6 +177,7 @@ src/
                  LandingSections, Reveal, NewsSection, NewsCard
     dashboard/   KpiRow, ModelPreview
     reports/     CsvExportButton, PrintButton
+    data-dictionary/ DictionaryExplorer (search + filters, local state)
   services/      the data boundary (+ dev/crashCube.ts, fixtures.ts, http.ts)
   types/         api.ts (contracts), filters.ts, news.ts
   lib/           filters (URL state), chart-theme (validated palettes),
@@ -188,7 +191,7 @@ src/
 `useSearchParams` (layouts do not receive `searchParams`). The form holds a
 pending draft and remounts via `key` when the URL changes. Hotspot selection
 uses the same pattern (`?area=`). Pages that read `searchParams` render
-dynamically; the landing page stays static.
+dynamically. The landing page, ML Insights and Data Dictionary do not read filters, so they stay static.
 
 **Maps.** Leaflet touches `window` at import, so each map loads through a thin
 client loader using `next/dynamic` with `ssr: false` (not allowed in Server

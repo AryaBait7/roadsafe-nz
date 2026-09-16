@@ -4,7 +4,18 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 10 (Reports) — complete.** Next up: Stage 11 (Data Dictionary).
+**Stage 11 (Data Dictionary) — complete.** Next up: Stage 12 (Responsive/mobile).
+
+### Stage 11 — Data Dictionary (done 2026-09-17)
+
+Nothing on the page is typed by hand. A new pipeline script, `generate_data_dictionary.py`, reads the full features CSV and **measures** each column's type, missing %, distinct count and an example value (the most common value, or the first for all-unique identifiers). Descriptions and groups are parsed from [DATA_DICTIONARY.md](DATA_DICTIONARY.md), so that file remains the single written source. The script reports any column without a description and any description whose column no longer exists. It currently flags only `advisorySpeed`, which is expected because cleaning drops it.
+
+The page shows five dataset stats, then a searchable, filterable table of all 82 columns grouped as in the markdown file. Search covers name and description. The group filter narrows the list. The "Show" filter offers dashboard, model target/candidate, excluded, derived and over 50% missing. Each row shows the field, description, type with distinct count, example, missing % with a bar, dashboard use and model role. Model roles mirror `mlService` and are labelled as a plan. The page ignores sidebar filters, says so, and is statically rendered; search is local state.
+
+**Profiling corrected the docs:** DATA_DICTIONARY.md said the roadside-object block had 28 columns; 21 exist. OBJECTID was first labelled "leakage" and is now "Excluded", because it is an identifier rather than an outcome. All-null columns are typed "Empty" rather than "Decimal".
+
+**Verified:** 82 rows under 8 group headers. Stats read 705,609 / 82 / 11 derived / 19 dashboard / 30 over 50% missing. Searching "speed" returns `speedLimit`, `temporarySpeedLimit` and `speed_limit_binned`. "Excluded" returns exactly the five columns listed in `mlService`. No console errors and no page overflow at 1440px or 375px; the table scrolls inside its card on phones. Lint, tsc and build are clean.
+
 
 ### Stage 10 — Reports (done 2026-09-16)
 
@@ -102,8 +113,8 @@ Seven requested changes, all against the existing components — no rebuild.
 | 8 | Risk Factors | ✅ Complete |
 | 9 | ML Insights | ✅ Complete |
 | 10 | Reports | ✅ Complete |
-| 11 | Data Dictionary | ⏭️ Next |
-| 12 | Responsive/mobile | 🟡 Shell and all page grids collapse to one column; no dedicated phone pass yet |
+| 11 | Data Dictionary | ✅ Complete |
+| 12 | Responsive/mobile | ⏭️ Next — 🟡 Shell and all page grids collapse to one column; no dedicated phone pass yet |
 | 13 | Animation + UX polish | 🔲 |
 | 14 | Loading/error/empty states | 🟡 Empty states wired on every data page; route-level loading/error boundaries pending |
 | 15 | Consistency + accessibility pass | 🔲 |
@@ -350,7 +361,7 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 11 — Data Dictionary page.** Searchable table (field, description, type, example, missing %, used in dashboard, used in ML). Types and missing % are *measured* from the CSV by the pipeline, not retyped; descriptions come from [DATA_DICTIONARY.md](DATA_DICTIONARY.md).
-2. **Stages 12–16** — phone-width pass, animation polish, route-level loading/error boundaries, consistency + accessibility audit, tests and performance.
+1. **Stage 12 — responsive pass** at 375px and 768px on every page. This includes a card layout for the data dictionary on phones.
+2. **Stages 13–16** — animation polish, route-level loading/error boundaries, consistency and accessibility audit, tests and performance.
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
 4. **Open data items before modelling:** drop the two 100%-empty columns (`intersection`, `crashRoadSideRoad`); decide fill-0 vs missing for the 57.3%-missing roadside-object block; investigate the grid cell at [-47.5, 179.0] tagged region "Unknown".
