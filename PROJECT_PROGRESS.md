@@ -4,7 +4,7 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 3 (App shell + global filters) — complete.** Next up: Stage 4, the Dashboard.
+**Stage 4 (Dashboard) — complete, except the hotspots map.** Next up: Stage 5 (Crash Trends), or the dashboard map if you want it before moving on.
 
 > **Build order changed 2026-09-12, restated 2026-09-16.** Build the complete application first, then study it via [LEARNING_GUIDE.md](LEARNING_GUIDE.md). The target architecture is unchanged — see [DECISIONS.md](DECISIONS.md) #10 and [ARCHITECTURE.md](ARCHITECTURE.md). Data work already completed (below) still stands.
 
@@ -15,7 +15,7 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 | 1 | Audit + stabilise frontend architecture | ✅ Complete |
 | 2 | Cinematic landing page | ✅ Complete |
 | 3 | App shell: sidebar, header, routing, global filters | ✅ Complete |
-| 4 | Dashboard | 🔲 |
+| 4 | Dashboard | 🟡 Panels complete; hotspots map deferred to Stage 6 |
 | 5 | Crash Trends | 🔲 |
 | 6 | Map Explorer | 🔲 |
 | 7 | Hotspots | 🔲 |
@@ -63,6 +63,43 @@ The service layer previously pointed at fixture files that did not exist, so eve
 - **Data-quality flag**: crashes with `light = "Unknown"` show a 0.32% severe rate (32 of 9,861) — far too low to be real, so "Unknown" is likely a recording artifact rather than a category. Should be excluded from rate comparisons.
 
 Also written this stage: [ARCHITECTURE.md](ARCHITECTURE.md) and [LEARNING_GUIDE.md](LEARNING_GUIDE.md) (15 topics with interview questions).
+
+### Stage 4 — Dashboard (done 2026-09-16, map outstanding)
+
+**Colour was computed, not chosen.** Every chart hex was validated with the dataviz skill's `validate_palette.js` against the real card surface (`#ffffff`). Three candidate palettes failed first:
+
+| Candidate | Why it failed |
+|---|---|
+| Existing brand severity tokens | `#8ca0b3` chroma 0.036 vs a 0.10 floor — it read as grey and stopped carrying identity |
+| Reference status scale (good→critical) | yellow↔orange ΔE 8–9 normal vision, 2–3 under protanopia. **Structurally unfixable** — a 4-step status ramp has amber and orange as inherent neighbours |
+| Sequential ramp, first three attempts | light end 1.23–1.79:1 vs a 2:1 floor |
+
+The passing set: severity `#a31621 / #d9534f / #e8a33d / #2e6fd9` (all six checks PASS) and a 4-step sequential ramp `#86b6ef → #104281` for the map. Notably my original tokens were already 3/4 correct — the validator found precisely the one that wasn't. Full provenance is in `src/lib/chart-theme.ts`.
+
+One WARN is outstanding by design: Minor at 2.16:1. That is **not dismissable** — it obligates a relief channel, so every chart ships visible value labels *and* a table view. Removing either makes the palette non-compliant.
+
+**Form decisions, and what was rejected:**
+- **KPI row** of stat tiles, not a grouped bar chart. Total crashes is the single hero figure. **No delta indicators** — there is no user-chosen comparison period, and inventing one would fabricate a statistic. Proportional figures, since `tabular-nums` makes large standalone numbers look loose.
+- **Trends as small multiples.** The spec asked for four severity series on one line chart, but Non-Injury (485,478) against Fatal (6,182) flattens the two series that matter, and rescuing that with a second y-axis is the single worst charting mistake. Two measures of different scale became two charts sharing an x-axis.
+- **Severity as a horizontal stacked bar, not a donut.** Fatal is 0.88% — an unlabelable sliver in a donut.
+- **Nominal bars in one hue.** Colouring bars by their own value would re-encode what length already shows.
+- **Bars hand-built in HTML**, Recharts reserved for the trend chart. The mandated 2px *surface gap* between stacked segments is exact in CSS, and the guidance forbids faking it with a stroke.
+- **ML panel renders an honest "awaiting model" state** — no invented feature importances.
+
+**Verified in the browser:**
+
+| Check | Result |
+|---|---|
+| Figures | Hero 705,609; 41,263 / 6,182 / 6,911 / 280,236, each tile stating its period |
+| Panel data | Severity sums to 705,609; conditions, light and road-type rows match the Stage 1 smoke test |
+| Trend charts render | 2 SVGs at 882×200, one line path each, real axes and gridlines |
+| Partial year | Chart plots **20** points (1 M + 19 C, cross-checked via 58 coord pairs); table keeps **21** rows through 2026 |
+| Table toggle | Label flips, `aria-expanded` updates, real `<table>` with caption and correct rows |
+| Overflow | None at 1440px |
+| Console | Fresh tab: no errors |
+| Build / lint | Clean (after fixing Recharts 3's changed `Tooltip` formatter signature) |
+
+**Outstanding**: the NZ hotspots map. Leaflet needs a `dynamic()` import with `ssr: false` (it touches `window` at module scope), cell binning onto the validated sequential ramp, and a scale legend. Deferred to Stage 6, where the full Map Explorer is built.
 
 ### Stage 3 — App shell and global filters (done 2026-09-16)
 

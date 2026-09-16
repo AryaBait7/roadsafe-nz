@@ -513,7 +513,92 @@ does exactly that so the shell can still be prerendered around the dynamic part.
 
 ---
 
-## 23. Verifying work instead of assuming it
+## 23. Chart colour is computed, not chosen
+
+**What**: every chart hex in this project was run through a palette validator
+before use, against the actual surface the chart renders on (`#ffffff`).
+
+**Where**: `frontend/src/lib/chart-theme.ts` carries the full report and the
+rejected alternatives.
+
+**The six checks a categorical palette must pass**: fixed hue order · lightness
+band (OKLCH L 0.43–0.77 on light) · chroma floor (C ≥ 0.10) · CVD separation
+(ΔE ≥ 8 in OKLab ×100 under simulated protanopia and deuteranopia) ·
+normal-vision floor (ΔE ≥ 15) · contrast ≥ 3:1 vs surface.
+
+**What it caught that eyes would not:**
+- `#8ca0b3` had chroma **0.036** against a 0.10 floor. It looks like a colour;
+  measured, it reads as grey and does no identity work.
+- The whole good→warning→serious→critical status scale is **structurally
+  unusable** for a 4-level severity encoding: yellow and orange are inherent
+  neighbours and measure ΔE 8–9 normal vision, **2–3 under protanopia**, in
+  every re-stepping attempted. No amount of nudging fixes it.
+- Three sequential ramps failed only on the light end (1.23–1.79:1 vs a 2:1
+  floor) — the pale tint vanishes into a white card.
+
+**The rule about WARNs**: a sub-3:1 contrast WARN is *not* dismissable. It
+obligates a relief channel — visible labels or a table view. That is why every
+chart here has a Table toggle; it is a compliance mechanism, not a nicety.
+
+**Concepts to learn**: OKLCH vs HSL; chroma as "how much colour is actually
+there"; Delta E; colour-vision-deficiency simulation; WCAG contrast; why
+perceptual colour spaces exist.
+
+**Interview questions**
+- How do you know a chart palette is colourblind-safe?
+- What is chroma, and why can a colour be "too grey" to encode identity?
+- Why validate against the surface colour rather than in the abstract?
+- A palette check warns on contrast. Is that ignorable?
+
+---
+
+## 24. Two scales, two charts — never a second y-axis
+
+**What**: the dashboard shows crash *volume* (~30–40k/yr) and *severe rate*
+(~6–8%) as two side-by-side charts sharing an x-axis, rather than one chart
+with two y-axes.
+
+**Why**: a dual-axis chart's two scales are aligned arbitrarily, so the picture
+invents a correlation that isn't in the data. It is the most common serious
+charting mistake. The same reasoning killed plotting all four severity levels
+on one line chart — Non-Injury at 485,478 against Fatal at 6,182 flattens the
+two series a road-safety reader actually cares about into the baseline.
+
+**Also here**: a donut was rejected for severity because Fatal is 0.88% — a
+sliver too small to label, and a label must never be clipped into its mark.
+
+**Interview questions**
+- Why are dual-axis charts considered misleading?
+- You have two measures with wildly different magnitudes. Options?
+- When is a pie or donut defensible, and when is it not?
+
+---
+
+## 25. When the probe is wrong, not the code
+
+**What**: verifying that the trend chart excluded the partial year, a probe
+counted `M`/`L` commands in the SVG path and reported **1 point**. The chart
+was fine — Recharts renders `type="monotone"` as a **cubic Bézier**, so the
+path is one `M` followed by `C` commands and contains no `L` at all. Counting
+the right grammar gave 20 points, confirmed independently by the coordinate-pair
+arithmetic ((58 − 1) / 3 + 1 = 20).
+
+**Why it matters**: this was the fourth time in one build session that
+instrumentation produced a false failure — after a stale console buffer, a
+frozen hidden-tab transition, and a selector that missed `color-mix()` colours.
+Each time the instinct to "fix" the code would have broken something working.
+
+**The habit**: when a measurement says something impossible, suspect the
+measurement first, and corroborate with a second independent method before
+editing anything.
+
+**Interview questions**
+- How do you tell a real failure from a broken test?
+- What would you check before acting on a surprising metric?
+
+---
+
+## 26. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

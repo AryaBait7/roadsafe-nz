@@ -33,12 +33,21 @@
   --color-surface-700: #3c4654;
   --color-surface-900: #1a1f29;
 
-  /* Crash severity — ordinal ramp, consistent everywhere severity appears.
-     Chart palette gets validated properly in Stage 3. */
+  /* Crash severity. Validated as a 4-slot categorical palette against the
+     white card surface — see lib/chart-theme.ts for the full report. The
+     first three were already correct; `none` was #8ca0b3, whose chroma of
+     0.036 is far below the 0.10 floor, meaning it read as grey and stopped
+     carrying identity. Re-stepped to the brand accent blue. */
   --color-severity-fatal: #a31621;
   --color-severity-serious: #d9534f;
   --color-severity-minor: #e8a33d;
-  --color-severity-none: #8ca0b3;
+  --color-severity-none: #2e6fd9;
+
+  /* Chart chrome. Recessive by design: the data is the only loud thing. */
+  --color-chart-grid: #e6e9ef;
+  --color-chart-axis: #cbd2de;
+  --color-chart-ink: #3c4654;
+  --color-chart-muted: #6b7685;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
