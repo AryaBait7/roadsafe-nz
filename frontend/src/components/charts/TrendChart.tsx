@@ -30,11 +30,14 @@ export function TrendChart({
   valueKey,
   kind,
   height = 200,
+  color = SERIES_1,
 }: {
   data: { year: number; value: number }[];
   valueKey: string;
   kind: "count" | "rate";
   height?: number;
+  /** Only override for small multiples where each panel *is* a category. */
+  color?: string;
 }) {
   const format = (value: number) =>
     kind === "rate" ? formatPercent(value) : formatNumber(value);
@@ -85,7 +88,7 @@ export function TrendChart({
           <Line
             type="monotone"
             dataKey="value"
-            stroke={SERIES_1}
+            stroke={color}
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"

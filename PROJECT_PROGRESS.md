@@ -4,7 +4,7 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 4 (Dashboard) — complete, except the hotspots map.** Next up: Stage 5 (Crash Trends), or the dashboard map if you want it before moving on.
+**Stage 5 (Crash Trends) — complete.** Next up: Stage 6 (Map Explorer), which also backfills the dashboard's outstanding hotspots map.
 
 > **Build order changed 2026-09-12, restated 2026-09-16.** Build the complete application first, then study it via [LEARNING_GUIDE.md](LEARNING_GUIDE.md). The target architecture is unchanged — see [DECISIONS.md](DECISIONS.md) #10 and [ARCHITECTURE.md](ARCHITECTURE.md). Data work already completed (below) still stands.
 
@@ -16,7 +16,7 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 | 2 | Cinematic landing page | ✅ Complete |
 | 3 | App shell: sidebar, header, routing, global filters | ✅ Complete |
 | 4 | Dashboard | 🟡 Panels complete; hotspots map deferred to Stage 6 |
-| 5 | Crash Trends | 🔲 |
+| 5 | Crash Trends | ✅ Complete |
 | 6 | Map Explorer | 🔲 |
 | 7 | Hotspots | 🔲 |
 | 8 | Risk Factors | 🔲 |
@@ -63,6 +63,26 @@ The service layer previously pointed at fixture files that did not exist, so eve
 - **Data-quality flag**: crashes with `light = "Unknown"` show a 0.32% severe rate (32 of 9,861) — far too low to be real, so "Unknown" is likely a recording artifact rather than a category. Should be excluded from rate comparisons.
 
 Also written this stage: [ARCHITECTURE.md](ARCHITECTURE.md) and [LEARNING_GUIDE.md](LEARNING_GUIDE.md) (15 topics with interview questions).
+
+### Stage 5 — Crash Trends (done 2026-09-16)
+
+Two new service methods, both plain cube group-bys: `getRegionBreakdown()` and `getSeverityTrends()`. `TrendChart` gained a `color` prop.
+
+**What the spec asked for that the data cannot support**, stated on the page rather than silently omitted:
+- **Month and weekday/time exploration** — impossible. CAS has no month, day or timestamp column. Seasonality comes from the `holiday` dimension instead, and it is a real signal: Labour Weekend 8.8% severe and Christmas–New Year 8.2%, against a 6.6% baseline outside holiday periods.
+
+**Form decisions:**
+- **Region comparison is a ranked bar list, not a multi-line chart.** 16 regions is double the eight-slot categorical ceiling, and all-pairs chart forms cap at three series — sixteen lines would be a straight anti-pattern.
+- **Severity over time is four small multiples**, each on its own scale. The rendered y-axes make the case concretely: Fatal tops out at 380, Serious 2,600, Minor 10,000, Non-Injury 30,000. On one shared axis the two levels that matter would sit on the baseline.
+- **The holiday chart excludes "Not a holiday period."** At 666,835 of 705,609 crashes it would flatten the four real periods to slivers; it is stated as the baseline in the panel description and kept in the table.
+
+**Real findings surfaced:**
+- **West Coast has the highest severe rate in the country at 11.0%** on only 6,426 crashes, while **Auckland has the lowest at 4.5%** on 235,352. Consistent with the earlier local-road/open-road result — rural open roads are where crashes turn serious.
+- Northland 9.3%, Tasman 9.5% and Canterbury 8.7% also run well above the 6.7% national rate.
+
+**Verified:** trend x-axis runs 2007–2025 with the partial 2026 excluded from every line but kept in every table; tooltip reads correctly ("2016 Crashes : 37,250"); all six chart strokes match their assigned colours (`#2e6fd9` ×2, then `#a31621` / `#d9534f` / `#e8a33d` / `#2e6fd9`) and the legend swatches match the lines exactly; 17 region rows; build and lint clean.
+
+**Bug caught by lint, not by eye**: `TrendChart` accepted a `color` prop but never applied it, so all four severity charts were drawing in the same blue while their legend swatches showed the correct distinct colours — which would have looked deliberate. The `no-unused-vars` warning was the only thing that flagged it.
 
 ### Stage 4 — Dashboard (done 2026-09-16, map outstanding)
 

@@ -12,12 +12,15 @@ import {
 import type {
   ApiResponse,
   CrashFilters,
+  CrashSeverity,
   CrashTrendPoint,
   HolidayBreakdown,
   LightConditionBreakdown,
   MapCrashPoint,
+  RegionBreakdown,
   RoadTypeBreakdown,
   SeverityBreakdownItem,
+  SeverityTrendSeries,
 } from "@/types";
 
 const SEVERITY_ORDER = [
@@ -136,6 +139,66 @@ export async function getHolidayBreakdown(
       };
     })
     .sort((a, b) => b.crashCount - a.crashCount);
+
+  return { data, meta };
+}
+
+/**
+ * Crashes per regional council area.
+ *
+ * Later: apiGet<RegionBreakdown[]>("/api/crashes/regions", filters)
+ */
+export async function getRegionBreakdown(
+  filters: CrashFilters = {},
+): Promise<ApiResponse<RegionBreakdown[]>> {
+  const { rows, meta } = await queryCube(filters);
+
+  const data = [...groupBy(rows, (row) => row.region)]
+    .map(([region, regionRows]) => {
+      const crashCount = totalCrashes(regionRows);
+      const severeCount = severeCrashes(regionRows);
+
+      return {
+        region,
+        crashCount,
+        severeCount,
+        severeRate: rate(severeCount, crashCount),
+      };
+    })
+    .sort((a, b) => b.crashCount - a.crashCount);
+
+  return { data, meta };
+}
+
+/**
+ * Per-year counts split by severity, as one series per level.
+ *
+ * Shaped for small multiples rather than a stacked or multi-line chart —
+ * see the type's comment for why the levels cannot share an axis.
+ */
+export async function getSeverityTrends(
+  filters: CrashFilters = {},
+): Promise<ApiResponse<SeverityTrendSeries[]>> {
+  const { rows, meta } = await queryCube(filters);
+
+  const years = [...new Set(rows.map((row) => row.crashYear))].sort(
+    (a, b) => a - b,
+  );
+
+  const data = SEVERITY_ORDER.map((severity) => {
+    const severityRows = rows.filter((row) => row.crashSeverity === severity);
+    const byYear = groupBy(severityRows, (row) => row.crashYear);
+
+    return {
+      severity: severity as CrashSeverity,
+      // Every series carries every year, so a level with no crashes in a
+      // given year plots a zero rather than silently skipping the point.
+      points: years.map((year) => ({
+        year,
+        value: totalCrashes(byYear.get(year) ?? []),
+      })),
+    };
+  }).filter((series) => series.points.some((point) => point.value > 0));
 
   return { data, meta };
 }

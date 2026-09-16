@@ -109,6 +109,32 @@ export interface RoadTypeBreakdown {
   severeRate: number;
 }
 
+/**
+ * GET /api/crashes/regions
+ *
+ * One row per regional council area. Used for comparison, not as chart
+ * series: 16 regions is far past the eight-slot categorical ceiling, so this
+ * is ranked bars and a table rather than sixteen lines.
+ */
+export interface RegionBreakdown {
+  region: string;
+  crashCount: number;
+  severeCount: number;
+  severeRate: number;
+}
+
+/**
+ * GET /api/crashes/severity-trends
+ *
+ * One series per severity level, shaped for small multiples. Deliberately not
+ * a single multi-series chart: Non-Injury (485,478) and Fatal (6,182) cannot
+ * share a y-axis without flattening the levels that matter most.
+ */
+export interface SeverityTrendSeries {
+  severity: CrashSeverity;
+  points: { year: number; value: number }[];
+}
+
 /** GET /api/hotspots */
 export interface Hotspot {
   id: string;
