@@ -1,6 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
+Reflects the implementation as of Stage 10 (2026-09-17).
 
 ## Target architecture
 
@@ -22,79 +23,96 @@ NZTA Crash Analysis System (CAS)   — public open data, 705,609 crashes, 2006�
         AWS                        — hosting, IAM, Secrets Manager, CloudWatch
 ```
 
-Built in reverse: the frontend exists now, the layers beneath it are filled in
-progressively. Nothing about the target shape changes because of that order —
-see [DECISIONS.md](DECISIONS.md) #10.
+Built in reverse: the complete frontend first, then the layers beneath it are
+filled in and connected. The target shape does not change because of that
+order — see [DECISIONS.md](DECISIONS.md) #10 and #21.
 
 ## Current state vs. target
 
 | Layer | Target | Today |
 |---|---|---|
-| Data source | PostgreSQL/PostGIS via Express | Pre-aggregated JSON fixtures on disk |
-| Aggregation | SQL `GROUP BY` in the database | In-memory group-by over a cube (`services/dev/`) |
-| Transport | HTTP to Express | Direct function call |
-| ML | Trained model + SHAP | Returns `null`, flagged `placeholder` |
+| Data source | PostgreSQL/PostGIS via Express | Pre-aggregated JSON fixtures on disk, generated from the real CAS data |
+| Aggregation | SQL `GROUP BY` in the database | In-memory group-by over a cube (`services/dev/crashCube.ts`) |
+| Transport | HTTP to Express | Direct function call from Server Components |
+| ML metrics | Trained model + SHAP | Return `null` with `meta.source: "placeholder"` |
+| ML training-data facts | Served by the API | Real, computed from the cube (`getTrainingDataProfile`) |
+| Exports | Server-side report generation | CSV built in the browser from rendered rows; print-to-PDF |
+| Hosting | AWS | `next dev` on `localhost:3100` only — nothing deployed |
 
-The frontend above the service layer is identical in both columns. That is the
+Everything above the service layer is the same in both columns. That is the
 whole design goal.
 
 ## The layering rule
 
 ```
-  Page (Server Component)
+  Page (Server Component)           reads searchParams, calls services
         |
-  Feature component
+  Feature / chart components        receive plain serialisable data
         |
-  Service          <- dashboardService / crashService / analyticsService / mlService
-        |
-  Data source      <- fixtures today, Express API later
+  Service                           dashboardService / crashService /
+        |                           analyticsService / mlService
+  Data source                       fixtures today, Express API later
 ```
 
 Rules that keep the seam intact:
 
 - Components never read files, parse CSV, or know where data came from.
-- Services return the *exact* shape the API will return, wrapped in `ApiResponse<T>`.
+- Services return the exact shape the API will return, wrapped in `ApiResponse<T>`.
 - Aggregation lives below the service boundary, never in a component.
 - Swapping the data source means editing service bodies only.
+- Only serialisable values cross into Client Components — functions cannot
+  (see LEARNING_GUIDE #29).
 
-### Why not just read the CSV in the frontend?
+### Why not read the CSV in the frontend?
 
 `cas_crash_data_features.csv` is 299MB / 705,609 rows. A browser cannot parse
 it, and the Express API will never serve raw rows either — it will serve
 aggregates. So the frontend is built against aggregates from day one, and the
 fixture shape *is* the API contract.
 
+## Service inventory
+
+| Service | Method | Future endpoint |
+|---|---|---|
+| dashboardService | `getSummary`, `getSummaryComparison`, `getFilterOptions` | `/api/dashboard/summary` |
+| crashService | `getTrends`, `getSeverityBreakdown`, `getSeverityTrends`, `getLightConditions`, `getRoadTypes`, `getRegionBreakdown`, `getHolidayBreakdown`, `getMapPoints`, `getMapGridDegrees` | `/api/crashes/*`, `/api/map/crashes` |
+| analyticsService | `getContributingFactors`, `getSeverityLift`, `getBaselineSevereRate`, `getHotspots`, `getHotspotDetail` | `/api/crashes/factors`, `/api/risk-factors`, `/api/hotspots[/{id}]` |
+| mlService | `getModelMetrics`, `getFeatureImportance` (null until Stage 20), `getTrainingDataProfile` (real) | `/api/ml/*` |
+
+`getSummaryComparison` returns the selected period and the equivalent
+preceding period, only when a year range is chosen. `getSeverityLift`
+measures each condition against the baseline and flags "Unknown" buckets with
+`isMissingData`.
+
 ## Data flow, end to end (today)
 
 ```
 cas_crash_data.csv (191MB, gitignored)
-   |  clean_data.py          fix disguised "Null", NZTM2000 -> WGS84, add is_severe
+   |  clean_data.py                 fix disguised "Null" (8 cols), NZTM2000 -> WGS84, is_severe
 cas_crash_data_clean.csv (269MB, gitignored)
-   |  feature_engineering.py vehicle counts, condition flags, hazard score, speed bins
+   |  feature_engineering.py        vehicle counts, condition flags, hazard score, speed bins
 cas_crash_data_features.csv (299MB, gitignored)
    |  generate_frontend_fixtures.py
-frontend/src/data/fixtures/*.json (~7.8MB, committed)
-   |  loadFixture() + crashCube.ts
+frontend/src/data/fixtures/*.json (~7.4MB, committed)
+   |  loadFixture() + services/dev/crashCube.ts
 services
    |
-Server Components -> HTML
+Server Components -> HTML (+ client components for charts, maps, filters)
 ```
 
-Only the last two files are committed. The app runs from a fresh clone without
-the 191MB download; regenerating fixtures requires it.
+The app runs from a fresh clone without the 191MB download; regenerating
+fixtures requires it.
 
 ## The fixtures
 
 | File | Size | Shape | Powers |
 |---|---|---|---|
-| `crash-cube.json` | 6.2MB | 47,554 rows, 7 dimensions + 8 measures | Everything except map & hotspots |
-| `map-cells.json` | 1.5MB | 6,103 grid cells × year | Map Explorer, dashboard map |
-| `hotspots.json` | 0.2MB | 68 areas + counts by year/severity | Hotspots |
-| `filter-options.json` | 2KB | Dimension values + year range | Global filters |
+| `crash-cube.json` | 6.2MB | 47,554 rows, 7 dimensions + 8 measures, column-oriented | Dashboard, trends, risk factors, reports, ML profile |
+| `map-cells.json` | 1.1MB | 6,103 cells `[lat, lon, regionIndex]` + 61,008 rows `[cellIndex, year, crashes, severe]` | Map Explorer, dashboard map |
+| `hotspots.json` | 0.2MB | 68 areas + rows `[areaIndex, year, severity, crashes]` | Hotspots ranking and detail |
+| `filter-options.json` | 1KB | Dimension values, year range, partial-year flag | Global filters |
 
 ### The cube
-
-One aggregate table at the grain the dashboard filters on:
 
 ```
 dimensions: crashYear, region, roadType, speedEnvironment,
@@ -103,88 +121,120 @@ measures:   crashCount, peopleKilled, seriousInjuries, minorInjuries,
             adverseWeather, unsealedRoad, hillRoad, noTrafficControl
 ```
 
-Every dashboard number except the map and hotspots is a group-by over this.
-Filters become a `WHERE` clause; chart grouping becomes `GROUP BY`. That is
-deliberate — the TypeScript in `services/dev/crashCube.ts` maps one-to-one onto
-the SQL that will replace it, so the migration is a translation, not a redesign.
+Filters become a `WHERE` clause; chart grouping becomes `GROUP BY`. The
+TypeScript in `crashCube.ts` maps one-to-one onto the SQL that will replace
+it. Decoded once; the parse *promise* is cached so concurrent first requests
+share it.
 
-Stored column-oriented (a `columns` header plus rows of bare values) because
-repeating 15 key names across 47,554 rows roughly triples the file for nothing.
-`crashCube.ts` decodes it once and caches the promise, so concurrent first
-requests share a single parse.
+### Map cells
+
+Region is cell metadata rather than a row dimension — a cell sits in exactly
+one (modal) region, so it costs 6,103 entries, not 61,008. Rows reference cells
+by index instead of repeating coordinates, which is what lets the map honour
+the region filter while the file shrank from 1.48MB to 1.08MB. Year and region
+filters apply to the map; road type, speed environment and severity do not at
+this grain, and the page says so.
 
 ### Derived dimensions
 
-`roadType` does not exist in CAS. It is composed from two real columns —
-`crashSHDescription` (state highway yes/no) and `urban` (urban/open) — into four
-categories, because neither alone is a usable road classification.
+`roadType` is composed from `crashSHDescription` × `urban` into four
+categories. `speedEnvironment` relabels the speed-limit bands.
 
 ## Dataset constraints that shaped the UI
 
-Verified against the data, not assumed:
-
-- **No time of day.** CAS has no time, date, month or weekday column — only
-  `crashYear`. The "time of day" panel reports **light condition**; date filters
-  are year-granularity; trends are annual.
-- **No crash cause.** No contributing-factor column exists. The factors panel
-  reports **conditions recorded present**, which is a correlation claim, not a
-  causal one.
-- **Partial final year.** 2026 holds 14,573 crashes against 29,017 in 2025. The
-  generator detects this and flags it so trend lines can exclude it rather than
-  appear to collapse.
-
-## Provenance
-
-Every response carries `meta.source: "real" | "placeholder"`. Anything
-`placeholder` renders behind a visible badge. This is a type-system guarantee
-rather than a discipline: the ML endpoints will return `placeholder` until a
-model exists in Stage 20, which is long enough to forget.
-
-`mlService` returns `null` rather than invented metrics — a reader cannot
-distinguish a placeholder 0.81 precision from a measured one.
+- **No time of day, month or weekday** — only `crashYear`. The time-of-day
+  panel reports light condition; date filters are year-granularity;
+  seasonality comes from the `holiday` dimension.
+- **No crash cause** — "contributing factors" are conditions recorded present,
+  reported as associations.
+- **Partial final year** — 2026 (14,573 crashes) is detected by the generator,
+  dropped from trend lines, kept in tables, and held out of the ML split.
+- **"Unknown" buckets distort rates** — unknown speed limit is 22.9% severe,
+  unknown light 0.3%. They are flagged as missing data and never charted as
+  findings.
 
 ## Frontend structure
 
 ```
 src/
   app/
-    (dashboard)/        route group: sidebar shell + 8 analytics pages
-    page.tsx            public landing (outside the group, no sidebar)
-    globals.css         Tailwind v4 @theme design tokens
+    page.tsx                    public landing (outside the group, no sidebar)
+    (dashboard)/layout.tsx      sidebar shell; fetches filter options once
+    (dashboard)/<8 pages>       dashboard, crash-trends, map-explorer, hotspots,
+                                risk-factors, ml-insights, reports, data-dictionary
+    globals.css                 Tailwind v4 @theme tokens, .map-dark, keyframes
   components/
-    ui/                 Card, Button, Badge, Select, Skeleton
-    layout/             Sidebar, FilterPanel, PageHeader, nav-items
-    states/             LoadingSkeleton, EmptyState, ErrorState
-  services/             the data boundary
-    dev/crashCube.ts    temporary in-memory query engine (deleted at Stage 23)
-    fixtures.ts         temporary file reader (deleted at Stage 23)
-    http.ts             the prepared API client
-  types/                API contracts
-  lib/                  cn(), formatters
+    ui/          Card, Button, Badge, Select, Skeleton, CountUp
+    layout/      Sidebar, FilterPanel, FilterSummary, PageHeader, NavIcon, nav-items
+    states/      LoadingSkeleton, EmptyState, ErrorState
+    charts/      ChartPanel (chart/table toggle), DataTable, BarList, Donut,
+                 TrendChart (Recharts), DivergingBars
+    maps/        CrashMap + loader (density grid), HotspotMap + loader (circles)
+  features/
+    landing/     HeroIntro, RoadScene, useIntroSequence, LandingNav,
+                 LandingSections, Reveal, NewsSection, NewsCard
+    dashboard/   KpiRow, ModelPreview
+    reports/     CsvExportButton, PrintButton
+  services/      the data boundary (+ dev/crashCube.ts, fixtures.ts, http.ts)
+  types/         api.ts (contracts), filters.ts, news.ts
+  lib/           filters (URL state), chart-theme (validated palettes),
+                 formatters, cn
 ```
 
-Two route groups: `(dashboard)` wraps pages in the sidebar shell; the landing
-page sits outside it and renders full-bleed.
+## Key runtime mechanisms
 
-Services are server-side only — they use `node:fs`. Pages are Server Components
-that call services and pass plain data to client components. This keeps the
-future API URL and any credentials off the client, and avoids shipping the cube
-to the browser.
+**Filter state lives in the URL.** Pages parse `searchParams` with
+`parseFilters()`; the sidebar panel reads them client-side with
+`useSearchParams` (layouts do not receive `searchParams`). The form holds a
+pending draft and remounts via `key` when the URL changes. Hotspot selection
+uses the same pattern (`?area=`). Pages that read `searchParams` render
+dynamically; the landing page stays static.
 
-## Styling
+**Maps.** Leaflet touches `window` at import, so each map loads through a thin
+client loader using `next/dynamic` with `ssr: false` (not allowed in Server
+Components). Tiles are OpenStreetMap's, darkened by a CSS filter scoped to the
+tile pane (`.map-dark`) — third-party dark basemaps require keys and serve
+watermarked tiles without one. The density grid is one `GeoJSON` layer on the
+canvas renderer. Both maps use a `ResizeObserver` → `invalidateSize()` so
+Leaflet never draws against a stale container size.
 
-Tailwind CSS v4, which is CSS-first: design tokens are declared in an `@theme`
-block in `globals.css` rather than a `tailwind.config.ts`. Declaring
-`--color-navy-900` generates `bg-navy-900`, `text-navy-900` and so on.
+**Landing intro.** A real CSS 3D scene (`preserve-3d`) with a single
+`requestAnimationFrame`-driven camera: one transform write per frame for the
+looping road world and one for the sign, which rides cumulative distance so it
+is approached once. A phase machine drives the ~6.6s sequence; it plays on
+every visit to `/`, is skippable and replayable, and reduced-motion users get
+the final state before first paint. Motion blur is a flat layer outside the 3D
+context because `filter` would flatten it.
 
-Palette: dark navy chrome, white/light-grey workspace, safety yellow as the one
-high-emphasis accent, restrained blue for secondary, plus an ordinal severity
-ramp used consistently wherever severity appears.
+**Progressive enhancement.** The server renders final values; `CountUp` and
+`Reveal` animate afterwards and arm fallback timers at mount so content never
+depends on an `IntersectionObserver` firing.
 
-## Deployment note
+**Exports.** CSV is built in the browser from the rows the page rendered
+(formula-injection guard, UTF-8 BOM). Print styles hide navigation so
+"Print or save as PDF" outputs the summary alone.
 
-`loadFixture` reads from `src/data/fixtures` at runtime via `process.cwd()`.
-That works for `next dev` and `next start`, but a `standalone` build would not
-copy `src/`. This disappears at Stage 23 when fixtures are replaced by HTTP
-calls; if a standalone build is needed sooner, the fixtures must move to
-`public/` or be imported statically.
+## Visual system
+
+Tailwind v4, CSS-first: tokens in `@theme`, no `tailwind.config.ts`.
+
+- Landing: cinematic, dark navy, safety-yellow accent.
+- Analytics: compact light workspace, 208px dark navy sidebar, 12-column grids,
+  tight card padding (the dashboard is ~1,117px tall at 1440×900).
+- Chart colour is validated, not chosen — all values and their validation
+  reports live in `lib/chart-theme.ts`: severity set, single-series blue,
+  light and dark sequential ramps, diverging pair. Safety yellow (1.56:1 on
+  white) is never used as a chart mark.
+- Every chart has a table-view twin; this is required, not optional, because
+  one severity colour sits below 3:1.
+
+## Known limitations
+
+- `requestAnimationFrame` does not run in the development preview pane, so the
+  intro and count-up *motion* have only been verified mathematically and by
+  final state, not watched. Needs a real-browser check.
+- `prefers-reduced-motion` is implemented but was not browser-emulated.
+- `loadFixture` reads `src/data/fixtures` via `process.cwd()`. Fine for
+  `next dev` / `next start`; a `standalone` build would not include it. Goes
+  away at Stage 23.
+- Nothing is deployed; the only URL is `http://localhost:3100`.

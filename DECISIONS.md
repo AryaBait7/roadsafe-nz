@@ -191,3 +191,107 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: `mlService.getModelMetrics()` and `getFeatureImportance()` return `data: null` with `meta.source: "placeholder"` until a model exists (Stage 20). The ML Insights page will render an explicit "awaiting model" state.
 
 **Why**: the obvious alternative is plausible-looking placeholder numbers so the page looks finished. But a reader cannot distinguish a placeholder precision of 0.81 from a measured one, and a screenshot of that page in a portfolio would be a false claim about a model that does not exist. Returning null makes the absence structural rather than a matter of remembering to add a caveat.
+
+---
+
+## 21. Build order restated: complete frontend first (27 stages)
+
+**Decision**: stages 1–16 build every page against real-data fixtures; stages 17–27 build the pipeline, database, ML, API and AWS underneath; learning follows.
+
+**Why**: a finished, navigable product is the portfolio artefact, and the service layer (#16, ARCHITECTURE.md) lets the backend be swapped in without touching pages. The target architecture is unchanged.
+
+---
+
+## 22. Filter state lives in the URL
+
+**Decision**: all global filters, and hotspot selection (`?area=`), are query parameters parsed by `lib/filters.ts`.
+
+**Why**: views become shareable and bookmarkable, back/forward works, and Server Components read filters directly. Cost: filtered routes render dynamically, and the sidebar reads `useSearchParams` inside Suspense because layouts receive no `searchParams`.
+
+---
+
+## 23. Landing intro is a real CSS 3D scene and replays on every visit
+
+**Decision**: guardrails, lane markings and the sign sit at real depths in a `preserve-3d` world moved by one rAF camera. The intro plays on every visit to `/`, is skippable, and has a reduced-motion final state.
+
+**Why**: a scrolled texture cannot contain objects that pass the camera. One transform write per frame stays on the compositor. The earlier `sessionStorage` suppression silently removed the opening when users returned home. No third-party video was used, so no copyrighted footage.
+
+---
+
+## 24. Fixed log-decade map bins, not quantiles
+
+**Decision**: density bins are 1–10 / 11–100 / 101–1,000 / 1,001+ crashes.
+
+**Why**: quantile bins are recomputed per filter, so the same colour would mean different counts on different views. Fixed bins keep colour comparable across filters and years.
+
+---
+
+## 25. Dark basemap via a CSS filter on OSM tiles
+
+**Decision**: OpenStreetMap tiles darkened by a filter scoped to `.leaflet-tile-pane` (`.map-dark`).
+
+**Why**: CARTO dark tiles returned HTTP 200 with an "API KEY REQUIRED" watermark baked into each image — the request check passed while the product was broken. This needs no key or account and leaves overlays unaffected.
+
+---
+
+## 26. No map plugin dependencies
+
+**Decision**: no leaflet.heat, markercluster or icon packages; density is one GeoJSON layer on canvas, hotspots are circle markers.
+
+**Why**: heatmaps blur counts into unreadable intensity, clustering hides an aggregate that already exists, and default marker icons break under bundlers. Fewer dependencies, honest encodings.
+
+---
+
+## 27. KPI deltas: only with a year range, coloured by good/bad
+
+**Decision**: "vs previous period" appears only when a year range is selected, comparing an equal-length preceding period; a fall in crashes is green.
+
+**Why**: without a range there is no honest comparison period. Colour follows meaning, not arrow direction. Approved deviation from the reference design, alongside keeping the validated sequential ramp instead of a rainbow legend.
+
+---
+
+## 28. Dashboard chart forms
+
+**Decision**: severity as a donut with values in the legend; road type and region as hand-built bars; no hero image in the analytics workspace; every chart has a table view.
+
+**Why**: four severity segments of very different sizes suit a donut; categories to compare suit bars. The table twin is required because the Minor severity colour is below 3:1 contrast.
+
+---
+
+## 29. Hotspot encoding: sqrt radius, distribution-based bins
+
+**Decision**: circle area is proportional to crash count (radius ∝ √count); severe-rate bins <7 / 7–10 / 10–12 / 12%+ come from the spread across areas.
+
+**Why**: linear radius exaggerates large areas by the square. Binning around the national 6.7% would put 40 of 68 areas in one bucket.
+
+---
+
+## 30. Risk factors measured against baseline; missing data excluded structurally
+
+**Decision**: diverging bars of lift vs the baseline severe rate; `isMissingData` on the data excludes "Unknown" buckets; `MIN_SAMPLE` of 5,000 gates thin categories; excluded rows are listed, not hidden.
+
+**Why**: "Unknown speed limit" would otherwise be the country's top risk factor and "Unknown light" its most protective one — recording artefacts, not findings.
+
+---
+
+## 31. ML Insights is honest before a model exists
+
+**Decision**: the page shows only real facts (class balance, arithmetic baselines, the chronological split with real counts, features, leakage exclusions) and "—" for every metric.
+
+**Why**: extends #20. The page is useful now and cannot be mistaken for a trained model.
+
+---
+
+## 32. Reports are generated from live data, client-side
+
+**Decision**: the summary is written from current aggregates; five CSV exports are built in the browser from rendered rows (formula-injection guard, UTF-8 BOM); PDF is the browser print dialog; future reports are listed without downloads.
+
+**Why**: exports always match the screen, and no fake documents exist. Server-side generation waits for the API.
+
+---
+
+## 33. Animated content always reaches its final state
+
+**Decision**: the server renders final values; `CountUp` and `Reveal` arm a fallback timer at mount.
+
+**Why**: an IntersectionObserver that never fires (hidden tab, print, odd viewport) left statistics at 0 and sections invisible. Animation is an enhancement, never a dependency.

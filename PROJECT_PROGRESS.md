@@ -98,14 +98,14 @@ Seven requested changes, all against the existing components — no rebuild.
 | 4 | Dashboard | ✅ Complete (hotspots map backfilled in Stage 6) |
 | 5 | Crash Trends | ✅ Complete |
 | 6 | Map Explorer | ✅ Complete |
-| 7 | Hotspots | 🔲 |
-| 8 | Risk Factors | 🔲 |
-| 9 | ML Insights | 🔲 |
-| 10 | Reports | 🔲 |
-| 11 | Data Dictionary | 🔲 |
-| 12 | Responsive/mobile | 🟡 Shell is responsive; per-page work pending |
+| 7 | Hotspots | ✅ Complete |
+| 8 | Risk Factors | ✅ Complete |
+| 9 | ML Insights | ✅ Complete |
+| 10 | Reports | ✅ Complete |
+| 11 | Data Dictionary | ⏭️ Next |
+| 12 | Responsive/mobile | 🟡 Shell and all page grids collapse to one column; no dedicated phone pass yet |
 | 13 | Animation + UX polish | 🔲 |
-| 14 | Loading/error/empty states | 🟡 Primitives built; per-page wiring pending |
+| 14 | Loading/error/empty states | 🟡 Empty states wired on every data page; route-level loading/error boundaries pending |
 | 15 | Consistency + accessibility pass | 🔲 |
 | 16 | Frontend testing + performance | 🔲 |
 | 17–21 | Data pipeline, PostGIS, analytics, ML, explainability | 🟡 Pipeline + EDA + features done (see below) |
@@ -350,6 +350,7 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 1.5** — write `data-pipeline/src/generate_frontend_fixtures.py` to turn the 285MB features CSV into the small JSON aggregates the services expect (dashboard summary, trends, severity, light conditions, road types, condition factors, hotspots, map points, filter options).
-2. **Stage 2** — cinematic landing page.
-3. Still open from the data work: drop the two 100%-empty columns (`intersection`, `crashRoadSideRoad`) from `clean_data.py`, and resolve how to treat the 57.3%-missing roadside-object block (fill 0 vs. true missing) before modelling.
+1. **Stage 11 — Data Dictionary page.** Searchable table (field, description, type, example, missing %, used in dashboard, used in ML). Types and missing % are *measured* from the CSV by the pipeline, not retyped; descriptions come from [DATA_DICTIONARY.md](DATA_DICTIONARY.md).
+2. **Stages 12–16** — phone-width pass, animation polish, route-level loading/error boundaries, consistency + accessibility audit, tests and performance.
+3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
+4. **Open data items before modelling:** drop the two 100%-empty columns (`intersection`, `crashRoadSideRoad`); decide fill-0 vs missing for the 57.3%-missing roadside-object block; investigate the grid cell at [-47.5, 179.0] tagged region "Unknown".

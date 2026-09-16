@@ -716,7 +716,91 @@ the formatter inside the client component.
 
 ---
 
-## 30. Verifying work instead of assuming it
+## 30. A CSS 3D scene with a requestAnimationFrame camera
+
+**What**: the landing road is a `perspective` container holding a
+`preserve-3d` world. Objects get fixed `translateZ` depths; each frame one
+transform moves the whole world towards the camera, wrapping every 140 units
+so the road loops. The sign is positioned by cumulative distance, so it is
+approached once. `filter` on a 3D container flattens it, so motion blur is a
+separate flat layer.
+
+**Why it matters**: the browser does the projection maths; JavaScript writes
+one transform per frame, which stays on the compositor.
+
+**Interview questions**
+- What does `perspective` do, and how does it differ from `transform: perspective()`?
+- Why do `filter` and `overflow: hidden` break `preserve-3d`?
+- Why use rAF rather than `setInterval` for animation?
+- How do you respect `prefers-reduced-motion` without a flash of animation?
+
+---
+
+## 31. Checks that pass while the product is broken
+
+**What**: CARTO dark tiles returned HTTP 200 — and each tile carried an
+"API KEY REQUIRED" watermark. A Leaflet map inside a flex card rendered an
+empty canvas because it measured its container before layout settled; fixed
+with an explicit height and `ResizeObserver` → `invalidateSize()`.
+
+**Why it matters**: status codes and a clean console are not evidence that
+the user sees the right thing. A screenshot is.
+
+**Interview questions**
+- Give an example of a green check that hid a real failure.
+- Why does Leaflet need `invalidateSize()`?
+- What would automated visual regression testing add?
+
+---
+
+## 32. Missing-data buckets masquerading as findings
+
+**What**: "Unknown speed limit" had a 22.9% severe rate — it would have been
+the top risk factor. "Unknown light" at 0.3% would have been the most
+protective. Both reflect how records were completed, not road conditions.
+They are flagged `isMissingData`, excluded from the chart, and still listed.
+Lift is shown against the baseline with diverging bars.
+
+**Why it matters**: a rate means something only relative to a baseline, and
+only for a real category with enough rows.
+
+**Interview questions**
+- Why compare against the baseline rate rather than show raw rates?
+- Why might "Unknown" correlate with severity? (serious crashes get fuller investigations)
+- How did you choose the minimum sample size, and what is the trade-off?
+- Adverse weather sits *below* baseline — why isn't that evidence it is safe?
+
+---
+
+## 33. Bubble maps and distribution-based bins
+
+**What**: circle radius ∝ √count so *area* is proportional to the value.
+Colour bins for severe rate come from the spread across the 68 areas. The
+national rate is 6.7% but the median area is 10.1%: Auckland's volume at a low
+rate pulls the national figure down — an aggregation effect.
+
+**Interview questions**
+- Why square-root the radius?
+- How can a national average be lower than most regions' rates?
+- Median or mean for "typical area", and why?
+
+---
+
+## 34. Client-side exports and CSV injection
+
+**What**: CSVs are built in the browser from the rendered rows. Cells starting
+with `= + - @` are prefixed so spreadsheets don't evaluate them as formulas; a
+UTF-8 BOM makes Excel read macrons (Māori place names) correctly. PDF is the
+print dialog with print-only styles.
+
+**Interview questions**
+- What is CSV/formula injection and how do you prevent it?
+- Why build exports client-side here, and when would you move them server-side?
+- What does a BOM do?
+
+---
+
+## 35. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182
