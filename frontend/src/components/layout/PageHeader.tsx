@@ -7,13 +7,13 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-surface-200 bg-white px-6 py-5">
-      <div>
-        <h1 className="text-lg font-semibold tracking-tight text-navy-900">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-200 bg-white px-4 py-2.5">
+      <div className="min-w-0">
+        <h1 className="text-base leading-tight font-semibold tracking-tight text-navy-900">
           {title}
         </h1>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm text-surface-500">
+          <p className="mt-0.5 max-w-3xl text-[11px] leading-snug text-surface-500">
             {description}
           </p>
         ) : null}

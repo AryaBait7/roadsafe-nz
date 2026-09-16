@@ -22,17 +22,17 @@ export function Select({
   const selectId = id ?? `select-${label.toLowerCase().replace(/\s+/g, "-")}`;
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <label
         htmlFor={selectId}
-        className="text-xs font-medium text-surface-300"
+        className="text-[10px] font-medium tracking-wide text-surface-400"
       >
         {label}
       </label>
       <select
         id={selectId}
         className={cn(
-          "h-9 rounded-md border border-navy-600 bg-navy-800 px-2.5 text-sm text-white",
+          "h-8 rounded-md border border-navy-600 bg-navy-800 px-2 text-xs text-white",
           "hover:border-navy-500 focus:border-accent-400",
           className,
         )}

@@ -62,6 +62,26 @@ export const SERIES_MUTED = "#cbd2de";
  */
 export const SEQUENTIAL_RAMP = ["#86b6ef", "#3987e5", "#1c5cab", "#104281"];
 
+/**
+ * Sequential ramp for the dark basemap, low density to high.
+ *
+ * Not the light ramp reversed. A dark surface needs its own steps validated
+ * against it, because "nearest the surface" flips: on white the palest step
+ * is at risk of vanishing, on near-black it is the darkest one. Here the
+ * dimmest step still clears the surface at 2.71:1, and density reads as
+ * brightness, which is what a dark map expects.
+ *
+ * Validated with --ordinal --mode dark --surface #0e1013:
+ * monotone PASS · adjacent ΔL PASS · low-end contrast 2.71:1 PASS ·
+ * single hue (7° spread) PASS.
+ */
+export const SEQUENTIAL_RAMP_DARK = [
+  "#1f55b0",
+  "#3987e5",
+  "#86b6ef",
+  "#cde2fb",
+];
+
 /** Chart chrome. Hairline, solid, one step off surface — never dashed. */
 export const CHART_CHROME = {
   grid: "var(--color-chart-grid)",

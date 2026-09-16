@@ -74,6 +74,23 @@
   }
 }
 
+/* --- Dark basemap ------------------------------------------------------- */
+
+/*
+ * Darkens OpenStreetMap's own tiles rather than using a third-party dark
+ * basemap. CARTO's dark tiles look right but now require an API key, and
+ * without one they return HTTP 200 with "API KEY REQUIRED" stamped across
+ * every tile — so they pass every programmatic check while being unusable.
+ *
+ * The filter is scoped to the tile pane alone. The overlay pane holding the
+ * crash cells is a sibling, so the validated data colours are untouched, and
+ * the attribution control stays legible in the control pane.
+ */
+.map-dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92)
+    saturate(0.55);
+}
+
 /* --- Landing page cinematic intro -------------------------------------- */
 
 /* Lane markings travelling toward the viewer. The road plane is rotated in

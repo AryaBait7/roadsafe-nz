@@ -11,11 +11,11 @@ import type { FilterOptions } from "@/types";
 
 function Brand() {
   return (
-    <Link href="/" className="block px-4 py-5">
-      <span className="block text-base font-semibold tracking-tight text-white">
+    <Link href="/" className="block px-3.5 py-3.5">
+      <span className="block text-[15px] leading-tight font-semibold tracking-tight text-white">
         RoadSafe<span className="text-safety-400"> NZ</span>
       </span>
-      <span className="mt-0.5 block text-[11px] text-surface-400">
+      <span className="mt-0.5 block text-[10px] text-surface-400">
         Road Crash Intelligence
       </span>
     </Link>
@@ -38,7 +38,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={onNavigate}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
                   isActive
                     ? "bg-navy-700 font-medium text-white"
                     : "text-surface-300 hover:bg-navy-800 hover:text-white",
@@ -95,7 +95,7 @@ export function Sidebar({ options }: { options?: FilterOptions }) {
   return (
     <>
       {/* Desktop: always-visible column */}
-      <aside className="hidden w-64 shrink-0 overflow-y-auto bg-navy-950 lg:block">
+      <aside className="hidden w-52 shrink-0 overflow-y-auto bg-navy-950 lg:block">
         <SidebarContent options={options} />
       </aside>
 

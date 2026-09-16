@@ -9,9 +9,9 @@ import type {
   Polygon,
 } from "geojson";
 import type { Layer, PathOptions } from "leaflet";
-import { useMemo, useState } from "react";
-import { GeoJSON, MapContainer, TileLayer } from "react-leaflet";
-import { SEQUENTIAL_RAMP } from "@/lib/chart-theme";
+import { useEffect, useMemo, useState } from "react";
+import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
+import { SEQUENTIAL_RAMP_DARK } from "@/lib/chart-theme";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import type { MapCrashPoint } from "@/types";
 
@@ -121,8 +121,8 @@ function styleFeature(feature?: Feature<Geometry, GeoJsonProperties>): PathOptio
     // No stroke: at this cell size a border is more ink than the fill and
     // merges neighbouring cells into a grid of lines.
     stroke: false,
-    fillColor: SEQUENTIAL_RAMP[index],
-    fillOpacity: 0.75,
+    fillColor: SEQUENTIAL_RAMP_DARK[index],
+    fillOpacity: 0.82,
   };
 }
 
@@ -166,6 +166,38 @@ function bindPopup(feature: Feature<Geometry, GeoJsonProperties>, layer: Layer) 
   layer.bindPopup(root);
 }
 
+/**
+ * Keeps Leaflet's idea of its own size in step with the container.
+ *
+ * Leaflet measures the container once at init and caches it. Inside a flex or
+ * grid card that height is not final at that moment, so the map keeps drawing
+ * against a stale size — the symptom is an oversized canvas with the data
+ * painted outside the visible area, i.e. an apparently empty map whose tiles
+ * still load fine.
+ *
+ * A ResizeObserver also covers window resizes and the sidebar drawer, which a
+ * one-off call at mount would miss.
+ */
+function InvalidateOnResize() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+
+    // One pass after layout settles, for the initial mount.
+    const settle = window.setTimeout(() => map.invalidateSize(), 180);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(settle);
+    };
+  }, [map]);
+
+  return null;
+}
+
 export default function CrashMap({
   points,
   gridDegrees,
@@ -183,8 +215,8 @@ export default function CrashMap({
   );
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div
           role="group"
           aria-label="Measure"
@@ -203,8 +235,8 @@ export default function CrashMap({
               aria-pressed={measure === key}
               className={
                 measure === key
-                  ? "bg-navy-900 px-3 py-1.5 text-[11px] font-medium text-white"
-                  : "bg-white px-3 py-1.5 text-[11px] font-medium text-surface-500 hover:bg-surface-100"
+                  ? "bg-navy-900 px-2.5 py-1 text-[10px] font-medium text-white"
+                  : "bg-white px-2.5 py-1 text-[10px] font-medium text-surface-500 hover:bg-surface-100"
               }
             >
               {label}
@@ -212,14 +244,14 @@ export default function CrashMap({
           ))}
         </div>
 
-        <div className="flex items-center gap-2 text-[11px] text-surface-500">
-          <span>Crashes per cell</span>
+        <div className="flex items-center gap-1.5 text-[10px] text-surface-500">
+          <span className="text-surface-400">Crashes per cell</span>
           {BINS.map((bin, index) => (
             <span key={bin.label} className="flex items-center gap-1">
               <span
                 aria-hidden
-                className="size-2.5 rounded-[2px]"
-                style={{ backgroundColor: SEQUENTIAL_RAMP[index] }}
+                className="size-2 rounded-[2px]"
+                style={{ backgroundColor: SEQUENTIAL_RAMP_DARK[index] }}
               />
               {bin.label}
             </span>
@@ -227,16 +259,24 @@ export default function CrashMap({
         </div>
       </div>
 
+      {/* Explicit height, deliberately not flex-1: a height that resolves
+          after Leaflet initialises is what left the canvas stale. */}
       <div
         style={{ height }}
-        className="overflow-hidden rounded-md border border-surface-200"
+        className="overflow-hidden rounded-md border border-navy-800"
       >
         <MapContainer
+          className="map-dark"
           bounds={MAINLAND_BOUNDS}
           scrollWheelZoom
           preferCanvas
           style={{ height: "100%", width: "100%" }}
         >
+          {/* OpenStreetMap tiles, darkened by a CSS filter on the tile pane
+              (see .map-dark in globals.css). On a light basemap the density
+              cells compete with road and label ink; on a dark one they are
+              the brightest thing, so the data reads first — and this needs no
+              API key, unlike the third-party dark basemaps. */}
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -249,13 +289,14 @@ export default function CrashMap({
             style={styleFeature}
             onEachFeature={bindPopup}
           />
+          <InvalidateOnResize />
         </MapContainer>
       </div>
 
-      <p className="text-[11px] text-surface-500">
-        {formatNumber(collection.features.length)} grid cells at{" "}
-        {gridDegrees}° (about {Math.round(gridDegrees * 111)}km). Individual
-        crash locations are never published — each cell is an aggregate.
+      <p className="text-[10px] leading-snug text-surface-400">
+        {formatNumber(collection.features.length)} cells at {gridDegrees}° (~
+        {Math.round(gridDegrees * 111)}km). Individual crash locations are
+        never published — each cell is an aggregate.
       </p>
     </div>
   );

@@ -64,8 +64,8 @@ function FilterForm({
   const isEmpty = toSearchParams(draft).toString() === "";
 
   return (
-    <div className="space-y-4 border-t border-navy-700 px-4 py-5">
-      <h2 className="text-[11px] font-semibold tracking-wider text-surface-400 uppercase">
+    <div className="space-y-2.5 border-t border-navy-700 px-3 py-3.5">
+      <h2 className="text-[10px] font-semibold tracking-wider text-surface-400 uppercase">
         Filters
       </h2>
 

@@ -1,11 +1,11 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { FilterSummary } from "@/components/layout/FilterSummary";
 import { ChartPanel } from "@/components/charts/ChartPanel";
 import { BarList } from "@/components/charts/BarList";
-import { SeverityBar } from "@/components/charts/SeverityBar";
+import { Donut } from "@/components/charts/Donut";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { DataTable } from "@/components/charts/DataTable";
-import { EmptyState } from "@/components/states/EmptyState";
 import { CrashMapLoader } from "@/components/maps/CrashMapLoader";
 import {
   Card,
@@ -14,11 +14,16 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/Card";
+import { EmptyState } from "@/components/states/EmptyState";
 import { KpiRow } from "@/features/dashboard/KpiRow";
 import { ModelPreview } from "@/features/dashboard/ModelPreview";
-import { parseFilters } from "@/lib/filters";
-import { formatNumber, formatPercent } from "@/lib/formatters";
-import { getFilterOptions, getSummary } from "@/services/dashboardService";
+import { parseFilters, toSearchParams } from "@/lib/filters";
+import { formatNumber, formatPercent, formatYearRange } from "@/lib/formatters";
+import { SEVERITY_COLORS, SEVERITY_ORDER } from "@/lib/chart-theme";
+import {
+  getFilterOptions,
+  getSummaryComparison,
+} from "@/services/dashboardService";
 import {
   getLightConditions,
   getMapGridDegrees,
@@ -36,11 +41,12 @@ export default async function DashboardPage({
   searchParams,
 }: PageProps<"/dashboard">) {
   const filters = parseFilters(await searchParams);
+  const hasFilters = toSearchParams(filters).toString() !== "";
 
   // Independent aggregates over the same cube — awaiting them in sequence
-  // would serialise seven reads for no reason.
+  // would serialise nine reads for no reason.
   const [
-    summary,
+    comparison,
     severity,
     factors,
     light,
@@ -51,7 +57,7 @@ export default async function DashboardPage({
     mapPoints,
     gridDegrees,
   ] = await Promise.all([
-    getSummary(filters),
+    getSummaryComparison(filters),
     getSeverityBreakdown(filters),
     getContributingFactors(filters),
     getLightConditions(filters),
@@ -63,9 +69,10 @@ export default async function DashboardPage({
     getMapGridDegrees(),
   ]);
 
-  // The most recent year is incomplete, so plotting it makes the series look
-  // like crashes collapsed. Dropped from the line, kept in the table. Guarded
-  // so filtering *to* that year alone still charts something.
+  const summary = comparison.data.current;
+
+  // The latest year is incomplete, so plotting it makes the series look like
+  // crashes collapsed. Dropped from the lines, kept in the tables.
   const partialYear = options.data.latestYearIsPartial
     ? options.data.yearMax
     : null;
@@ -73,114 +80,121 @@ export default async function DashboardPage({
   const trendPoints = withoutPartial.length > 0 ? withoutPartial : trends.data;
   const partialExcluded = withoutPartial.length !== trends.data.length;
 
+  const severitySlices = SEVERITY_ORDER.map((level) => {
+    const item = severity.data.find((s) => s.severity === level);
+    return item
+      ? { name: level, value: item.count, color: SEVERITY_COLORS[level] }
+      : null;
+  }).filter((slice) => slice !== null);
+
   return (
     <>
       <PageHeader
         title="Dashboard"
-        description="Overview of road crash patterns across New Zealand."
+        description="Overview of road crash trends and risk insights across New Zealand"
+        actions={
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="rounded-md border border-surface-200 px-2.5 py-1 text-surface-700">
+              {formatYearRange(summary.yearFrom, summary.yearTo)}
+            </span>
+            {hasFilters ? (
+              <Link
+                href="/dashboard"
+                className="rounded-md border border-surface-200 px-2.5 py-1 font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-navy-900"
+              >
+                Reset
+              </Link>
+            ) : null}
+          </div>
+        }
       />
       <FilterSummary filters={filters} pathname="/dashboard" />
 
-      <div className="space-y-4 p-6">
-        <KpiRow summary={summary.data} />
+      <div className="space-y-3 p-4">
+        <KpiRow summary={summary} previous={comparison.data.previous} />
 
-        <ChartPanel
-          title="Crash trends over time"
-          description={
-            partialExcluded
-              ? `Crash volume and the share that were serious or fatal, by year. ${partialYear} is excluded as a partial year of data; it remains in the table.`
-              : "Crash volume and the share that were serious or fatal, by year."
-          }
-          chart={
-            // Two measures on different scales, so two charts rather than one
-            // with a second y-axis: 705k crashes and a ~7% rate cannot share
-            // an axis without inventing a relationship between them.
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div>
-                <p className="mb-2 text-[11px] font-medium text-surface-500">
-                  Crashes per year
-                </p>
-                <TrendChart
-                  kind="count"
-                  valueKey="Crashes"
-                  data={trendPoints.map((p) => ({
-                    year: p.year,
-                    value: p.totalCrashes,
-                  }))}
-                />
-              </div>
-              <div>
-                <p className="mb-2 text-[11px] font-medium text-surface-500">
-                  Serious or fatal, share of crashes
-                </p>
-                <TrendChart
-                  kind="rate"
-                  valueKey="Severe rate"
-                  data={trendPoints.map((p) => ({
-                    year: p.year,
-                    value: p.severeRate,
-                  }))}
-                />
-              </div>
-            </div>
-          }
-          table={
-            <DataTable
-              caption="Crashes and severe rate by year"
-              rows={trends.data}
-              columns={[
-                { header: "Year", cell: (row) => row.year },
-                {
-                  header: "Crashes",
-                  numeric: true,
-                  cell: (row) => formatNumber(row.totalCrashes),
-                },
-                {
-                  header: "Serious or fatal",
-                  numeric: true,
-                  cell: (row) => formatNumber(row.severeCrashes),
-                },
-                {
-                  header: "Severe rate",
-                  numeric: true,
-                  cell: (row) => formatPercent(row.severeRate),
-                },
-              ]}
-            />
-          }
-        />
-
-        <Card>
-          <CardHeader>
-            <div className="min-w-0">
-              <CardTitle>New Zealand crash hotspots</CardTitle>
-              <CardDescription>
-                Crash density on a {gridDegrees}° grid. Click any cell for its
-                figures, or open Map Explorer for the full view.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardBody>
-            {mapPoints.data.length === 0 ? (
-              <EmptyState
-                title="No crashes match these filters"
-                description="Try widening the year range or clearing the region filter."
-              />
-            ) : (
-              <CrashMapLoader
-                points={mapPoints.data}
-                gridDegrees={gridDegrees}
-                height="380px"
-              />
-            )}
-          </CardBody>
-        </Card>
-
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
+          {/* Row 1 — 5 / 3 / 4 of twelve columns. */}
           <ChartPanel
+            className="xl:col-span-5"
+            title="Crash trends over time"
+            description={
+              partialExcluded
+                ? `Volume and severe share by year. ${partialYear} excluded as a partial year; kept in the table.`
+                : "Volume and the share that were serious or fatal, by year."
+            }
+            chart={
+              // Two measures on different scales, so two charts rather than
+              // one with a second y-axis.
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="mb-1 text-[10px] font-medium text-surface-500">
+                    Crashes per year
+                  </p>
+                  <TrendChart
+                    kind="count"
+                    valueKey="Crashes"
+                    height={150}
+                    data={trendPoints.map((p) => ({
+                      year: p.year,
+                      value: p.totalCrashes,
+                    }))}
+                  />
+                </div>
+                <div>
+                  <p className="mb-1 text-[10px] font-medium text-surface-500">
+                    Serious or fatal share
+                  </p>
+                  <TrendChart
+                    kind="rate"
+                    valueKey="Severe rate"
+                    height={150}
+                    data={trendPoints.map((p) => ({
+                      year: p.year,
+                      value: p.severeRate,
+                    }))}
+                  />
+                </div>
+              </div>
+            }
+            table={
+              <DataTable
+                caption="Crashes and severe rate by year"
+                rows={trends.data}
+                columns={[
+                  { header: "Year", cell: (row) => row.year },
+                  {
+                    header: "Crashes",
+                    numeric: true,
+                    cell: (row) => formatNumber(row.totalCrashes),
+                  },
+                  {
+                    header: "Severe",
+                    numeric: true,
+                    cell: (row) => formatNumber(row.severeCrashes),
+                  },
+                  {
+                    header: "Rate",
+                    numeric: true,
+                    cell: (row) => formatPercent(row.severeRate),
+                  },
+                ]}
+              />
+            }
+          />
+
+          <ChartPanel
+            className="xl:col-span-3"
             title="Crashes by severity"
             description="Share of crashes at each severity level."
-            chart={<SeverityBar data={severity.data} />}
+            chart={
+              <Donut
+                data={severitySlices}
+                centreValue={summary.totalCrashes}
+                centreLabel="Total"
+                size={140}
+              />
+            }
             table={
               <DataTable
                 caption="Crashes by severity"
@@ -203,8 +217,9 @@ export default async function DashboardPage({
           />
 
           <ChartPanel
+            className="xl:col-span-4"
             title="Conditions present at crashes"
-            description="Recorded conditions, with the share of each that was severe. These are associations, not causes — CAS has no cause field."
+            description="Associations, not causes — CAS records no contributing-factor field."
             chart={
               <BarList
                 data={factors.data.map((factor) => ({
@@ -220,16 +235,10 @@ export default async function DashboardPage({
                 rows={factors.data}
                 columns={[
                   { header: "Condition", cell: (row) => row.factor },
-                  { header: "Category", cell: (row) => row.category },
                   {
                     header: "Crashes",
                     numeric: true,
                     cell: (row) => formatNumber(row.crashCount),
-                  },
-                  {
-                    header: "Severe",
-                    numeric: true,
-                    cell: (row) => formatNumber(row.severeCount),
                   },
                   {
                     header: "Severe rate",
@@ -241,9 +250,36 @@ export default async function DashboardPage({
             }
           />
 
+          {/* Row 2 — the map holds the left five columns across both rows. */}
+          <Card className="flex flex-col xl:col-span-5 xl:row-span-2">
+            <CardHeader>
+              <div className="min-w-0">
+                <CardTitle>New Zealand crash hotspots</CardTitle>
+                <CardDescription>
+                  Density on a {gridDegrees}° grid. Click a cell for its figures.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardBody className="flex min-h-0 flex-1 flex-col">
+              {mapPoints.data.length === 0 ? (
+                <EmptyState
+                  title="No crashes match these filters"
+                  description="Try widening the year range or clearing the region filter."
+                />
+              ) : (
+                <CrashMapLoader
+                  points={mapPoints.data}
+                  gridDegrees={gridDegrees}
+                  height="430px"
+                />
+              )}
+            </CardBody>
+          </Card>
+
           <ChartPanel
+            className="xl:col-span-4"
             title="Crashes by light condition"
-            description="CAS records no time of day — light condition is the closest real signal about when a crash happened."
+            description="CAS records no time of day — light condition is the closest real signal."
             chart={
               <BarList
                 data={light.data.map((item) => ({
@@ -265,11 +301,6 @@ export default async function DashboardPage({
                     cell: (row) => formatNumber(row.crashCount),
                   },
                   {
-                    header: "Severe",
-                    numeric: true,
-                    cell: (row) => formatNumber(row.severeCount),
-                  },
-                  {
                     header: "Severe rate",
                     numeric: true,
                     cell: (row) => formatPercent(row.severeRate),
@@ -280,8 +311,9 @@ export default async function DashboardPage({
           />
 
           <ChartPanel
+            className="xl:col-span-3"
             title="Crashes by road type"
-            description="State highway or local road, urban or open road."
+            description="State highway or local road, urban or open."
             chart={
               <BarList
                 data={roadTypes.data.map((item) => ({
@@ -303,11 +335,6 @@ export default async function DashboardPage({
                     cell: (row) => formatNumber(row.crashCount),
                   },
                   {
-                    header: "Severe",
-                    numeric: true,
-                    cell: (row) => formatNumber(row.severeCount),
-                  },
-                  {
                     header: "Severe rate",
                     numeric: true,
                     cell: (row) => formatPercent(row.severeRate),
@@ -317,13 +344,41 @@ export default async function DashboardPage({
             }
           />
 
+          {/* Row 3 — beside the map. */}
           <ChartPanel
-            title="Machine learning insight"
-            description="Factors the severity model weighs most heavily."
+            className="xl:col-span-4"
+            title="ML model insight"
+            description="Factors associated with serious and fatal crashes."
             isPlaceholder={importance.meta.source === "placeholder"}
             chart={<ModelPreview importance={importance} />}
           />
+
+          <Card className="flex flex-col xl:col-span-3">
+            <CardHeader>
+              <CardTitle>Model summary</CardTitle>
+            </CardHeader>
+            <CardBody className="flex flex-1 flex-col justify-between gap-3">
+              <p className="text-[11px] leading-relaxed text-surface-500">
+                Once trained, the classifier will estimate how severe a crash
+                is likely to be <em>given that a crash occurred</em>. It cannot
+                predict whether a crash will happen: this dataset contains only
+                crashes, so it holds no examples of roads where nothing went
+                wrong.
+              </p>
+              <Link
+                href="/ml-insights"
+                className="text-[11px] font-medium text-accent-600 hover:underline"
+              >
+                View full model report →
+              </Link>
+            </CardBody>
+          </Card>
         </div>
+
+        <p className="text-[10px] text-surface-400">
+          Data source: Waka Kotahi NZ Transport Agency, Crash Analysis System
+          (CAS). {summary.yearTo} is a partial year.
+        </p>
       </div>
     </>
   );

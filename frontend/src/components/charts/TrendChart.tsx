@@ -29,7 +29,7 @@ export function TrendChart({
   data,
   valueKey,
   kind,
-  height = 200,
+  height = 168,
   color = SERIES_1,
 }: {
   data: { year: number; value: number }[];
@@ -45,7 +45,7 @@ export function TrendChart({
   return (
     <div style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+        <LineChart data={data} margin={{ top: 4, right: 6, bottom: 0, left: 0 }}>
           {/* Hairline, solid, one step off surface. Horizontal only: vertical
               rules would compete with the year ticks. */}
           <CartesianGrid
@@ -55,14 +55,14 @@ export function TrendChart({
           />
           <XAxis
             dataKey="year"
-            tick={{ fontSize: 11, fill: CHART_CHROME.muted }}
+            tick={{ fontSize: 10, fill: CHART_CHROME.muted }}
             tickLine={false}
             axisLine={{ stroke: CHART_CHROME.axis }}
-            minTickGap={16}
+            minTickGap={20}
           />
           <YAxis
-            width={52}
-            tick={{ fontSize: 11, fill: CHART_CHROME.muted }}
+            width={44}
+            tick={{ fontSize: 10, fill: CHART_CHROME.muted }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(value: number) =>

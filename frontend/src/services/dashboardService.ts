@@ -54,6 +54,59 @@ export async function getSevereCount(
   return severeCrashes(rows);
 }
 
+export interface SummaryComparison {
+  current: DashboardSummary;
+  /** Null when no comparable preceding period exists. */
+  previous: DashboardSummary | null;
+}
+
+/**
+ * The selected period alongside the equivalent period immediately before it.
+ *
+ * Only returned when the user has actually chosen a year range: with no
+ * filter the selection is the entire dataset, which has nothing before it to
+ * compare against. Rather than invent a baseline, the KPI deltas simply do
+ * not render in that case.
+ *
+ * Later: the API returns both windows in one response.
+ */
+export async function getSummaryComparison(
+  filters: CrashFilters = {},
+): Promise<ApiResponse<SummaryComparison>> {
+  const current = await getSummary(filters);
+
+  const { yearFrom, yearTo } = filters;
+  if (yearFrom === undefined || yearTo === undefined) {
+    return {
+      data: { current: current.data, previous: null },
+      meta: current.meta,
+    };
+  }
+
+  const span = yearTo - yearFrom + 1;
+  const previousTo = yearFrom - 1;
+  const previousFrom = previousTo - span + 1;
+
+  const options = await getFilterOptions();
+  if (previousFrom < options.data.yearMin) {
+    return {
+      data: { current: current.data, previous: null },
+      meta: current.meta,
+    };
+  }
+
+  const previous = await getSummary({
+    ...filters,
+    yearFrom: previousFrom,
+    yearTo: previousTo,
+  });
+
+  return {
+    data: { current: current.data, previous: previous.data },
+    meta: current.meta,
+  };
+}
+
 export async function getFilterOptions(): Promise<ApiResponse<FilterOptions>> {
   return loadFixture<ApiResponse<FilterOptions>>("filter-options");
 }

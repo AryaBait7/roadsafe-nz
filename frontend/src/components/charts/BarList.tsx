@@ -36,16 +36,16 @@ export function BarList({
   const max = Math.max(...data.map((d) => d.value), 1);
 
   return (
-    <ul className="flex flex-col gap-2.5">
+    <ul className="flex flex-col gap-1.5">
       {data.map((datum) => (
-        <li key={datum.label} className="grid grid-cols-[minmax(0,9rem)_1fr] items-center gap-3">
-          <span className="truncate text-xs text-surface-700" title={datum.label}>
+        <li key={datum.label} className="grid grid-cols-[minmax(0,7.5rem)_1fr] items-center gap-2">
+          <span className="truncate text-[11px] text-surface-700" title={datum.label}>
             {datum.label}
           </span>
 
           <div className="flex items-center gap-2">
             {/* Track is invisible; the fill grows from a single baseline. */}
-            <div className="h-4 min-w-0 flex-1">
+            <div className="h-3 min-w-0 flex-1">
               <div
                 className="h-full rounded-r-[4px]"
                 style={{
@@ -55,13 +55,13 @@ export function BarList({
               />
             </div>
 
-            <span className="tabular shrink-0 text-xs font-medium text-navy-900">
+            <span className="tabular shrink-0 text-[11px] font-medium text-navy-900">
               {formatNumber(datum.value)}
             </span>
 
             {datum.rate !== undefined ? (
               <span
-                className="tabular w-14 shrink-0 text-right text-[11px] text-surface-500"
+                className="tabular w-11 shrink-0 text-right text-[10px] text-surface-500"
                 title={`${formatPercent(datum.rate)} of these ${valueLabel} were severe`}
               >
                 {formatPercent(datum.rate)}
