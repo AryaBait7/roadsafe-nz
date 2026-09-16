@@ -135,6 +135,22 @@ export interface SeverityTrendSeries {
   points: { year: number; value: number }[];
 }
 
+/**
+ * GET /api/hotspots/{areaId}
+ *
+ * One territorial authority in depth: its totals under the current filters,
+ * how its crashes break down by severity, how it has moved year to year, and
+ * where it sits in the national ranking.
+ */
+export interface HotspotDetail {
+  area: Hotspot;
+  severity: SeverityBreakdownItem[];
+  trend: CrashTrendPoint[];
+  /** 1-based position by crash count among areas with any crashes. */
+  rank: number;
+  totalAreas: number;
+}
+
 /** GET /api/hotspots */
 export interface Hotspot {
   id: string;

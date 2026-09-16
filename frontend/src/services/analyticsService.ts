@@ -4,8 +4,21 @@ import type {
   ApiResponse,
   ConditionFactor,
   CrashFilters,
+  CrashSeverity,
+  CrashTrendPoint,
   Hotspot,
+  HotspotDetail,
+  SeverityBreakdownItem,
 } from "@/types";
+
+const SEVERITY_ORDER: readonly CrashSeverity[] = [
+  "Fatal Crash",
+  "Serious Crash",
+  "Minor Crash",
+  "Non-Injury Crash",
+];
+
+const SEVERE: ReadonlySet<string> = new Set(["Fatal Crash", "Serious Crash"]);
 
 /**
  * Conditions recorded as present at crashes — deliberately not "causes".
@@ -160,4 +173,98 @@ export async function getHotspots(
     .sort((a, b) => b.crashCount - a.crashCount);
 
   return { data: hotspots, meta };
+}
+
+/**
+ * One area in depth.
+ *
+ * The hotspot fixture is stored per (area, year, severity), so severity
+ * composition and a year-by-year trend both fall straight out of it — no
+ * extra data is needed for the detail view, only a different grouping of
+ * rows the ranking already reads.
+ *
+ * Later: apiGet<HotspotDetail>(`/api/hotspots/${areaId}`, filters)
+ */
+export async function getHotspotDetail(
+  areaId: string,
+  filters: CrashFilters = {},
+): Promise<ApiResponse<HotspotDetail | null>> {
+  const [{ data, meta }, ranking] = await Promise.all([
+    loadFixture<ApiResponse<HotspotFixture>>("hotspots"),
+    getHotspots(filters),
+  ]);
+
+  const at = Object.fromEntries(data.columns.map((name, i) => [name, i]));
+  const index = data.areas.findIndex((area) => area.id === areaId);
+
+  if (index === -1) return { data: null, meta };
+
+  const bySeverity = new Map<string, number>();
+  const byYear = new Map<number, { total: number; severe: number }>();
+
+  for (const row of data.rows) {
+    if ((row[at.areaIndex] as number) !== index) continue;
+
+    const year = row[at.crashYear] as number;
+    const severity = row[at.crashSeverity] as string;
+    const count = row[at.crashCount] as number;
+
+    if (filters.yearFrom !== undefined && year < filters.yearFrom) continue;
+    if (filters.yearTo !== undefined && year > filters.yearTo) continue;
+    if (filters.severity && severity !== filters.severity) continue;
+
+    bySeverity.set(severity, (bySeverity.get(severity) ?? 0) + count);
+
+    const running = byYear.get(year) ?? { total: 0, severe: 0 };
+    running.total += count;
+    if (SEVERE.has(severity)) running.severe += count;
+    byYear.set(year, running);
+  }
+
+  const total = [...bySeverity.values()].reduce((sum, n) => sum + n, 0);
+
+  // The area may fall outside the ranking entirely — for example when a
+  // region filter excludes it — so its own totals are recomputed here rather
+  // than assumed to be present in `ranking`.
+  const ranked = ranking.data.findIndex((hotspot) => hotspot.id === areaId);
+  const severeTotal = [...bySeverity]
+    .filter(([severity]) => SEVERE.has(severity))
+    .reduce((sum, [, count]) => sum + count, 0);
+
+  const source = data.areas[index];
+
+  const severity: SeverityBreakdownItem[] = SEVERITY_ORDER.map((level) => ({
+    severity: level,
+    count: bySeverity.get(level) ?? 0,
+    share: rate(bySeverity.get(level) ?? 0, total),
+  })).filter((item) => item.count > 0);
+
+  const trend: CrashTrendPoint[] = [...byYear]
+    .map(([year, counts]) => ({
+      year,
+      totalCrashes: counts.total,
+      severeCrashes: counts.severe,
+      severeRate: rate(counts.severe, counts.total),
+    }))
+    .sort((a, b) => a.year - b.year);
+
+  return {
+    data: {
+      area: {
+        id: source.id,
+        name: source.name,
+        region: source.region,
+        latitude: source.latitude,
+        longitude: source.longitude,
+        crashCount: total,
+        severeCount: severeTotal,
+        severeRate: rate(severeTotal, total),
+      },
+      severity,
+      trend,
+      rank: ranked === -1 ? 0 : ranked + 1,
+      totalAreas: ranking.data.length,
+    },
+    meta,
+  };
 }

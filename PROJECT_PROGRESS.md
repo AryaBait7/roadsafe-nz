@@ -4,7 +4,21 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**UI refinement pass complete** (road intro rebuild, compact dashboard, landing page). Next up: Stage 7 (Hotspots).
+**Stage 7 (Hotspots) — complete.** Next up: Stage 8 (Risk Factors).
+
+### Stage 7 — Hotspots (done 2026-09-16)
+
+No pipeline change was needed: the hotspots fixture already stores rows per (area, year, severity), so severity composition and per-area trends were sitting in data the ranking was aggregating away. Added `getHotspotDetail()` to read them.
+
+**Built to be compared, not read.** A ranked bar list and a proportional-circle map side by side, with a selected area driving a severity donut, its own trend line and its national rank. Selection lives in the URL as `?area=`, consistent with the filter architecture, so a specific hotspot is shareable and filters are preserved across selection.
+
+**Two encoding decisions:**
+- Circle **area** carries crash volume, fill carries severe rate. Genuinely different quantities, so this is not double-encoding — and radius scales with the *square root* of the count, because mapping count straight to radius exaggerates large areas by the square, which is the classic way a bubble map lies.
+- Severe-rate bins come from the **actual distribution across areas**, not the national average: `<7 / 7–10 / 10–12 / ≥12%`. Binning around the national 6.7% would have put 40 of 68 areas in one bucket.
+
+**The finding that shaped the page**: the national severe rate is **6.7%**, but the **median territorial authority is 10.1%**. Not a contradiction — Auckland alone holds 237,434 crashes at 4.5% and drags the national average down, while rural districts top the rate table (Hurunui 14.2%, Kaipara 13.2%, Selwyn and Southland 12.7%). Both figures are stated on the page so the ranking cannot be misread. This is the same rural-open-road story the road-type and regional analyses found, now at district level.
+
+**Verified:** 68 ranked areas and 68 map markers; top entry "Auckland 237,434 · 4.5%"; selecting it returns "Ranked #1 of 68 · 237,434 crashes · 10,604 serious or fatal (4.5%)", matching the Stage 1 smoke-test figure computed by a different path; selected marker highlighted; donut and trend render; page 994px at 1440×900; no document overflow; lint and build clean first pass.
 
 ### UI refinement (2026-09-16)
 
