@@ -53,6 +53,22 @@ export const SERIES_1 = "#2e6fd9";
 export const SERIES_MUTED = "#cbd2de";
 
 /**
+ * Diverging pair for "above or below a baseline".
+ *
+ * Warm and cool poles that read as opposite, with a neutral grey midpoint —
+ * two cool hues would not signal opposition. Both steps are already in the
+ * documented palette, so this adds no new colour.
+ *
+ * Validated as a 2-slot categorical set on #ffffff: all six checks PASS,
+ * CVD ΔE 27.4 (deutan) / 30.9 (tritan), normal-vision ΔE 32.4, both ≥3:1.
+ */
+export const DIVERGING = {
+  above: "#a31621",
+  below: "#2e6fd9",
+  midpoint: "#cbd2de",
+} as const;
+
+/**
  * Sequential ramp for magnitude (the map's density cells). One hue,
  * light→dark. Validated with --ordinal: monotone PASS · adjacent ΔL PASS ·
  * light-end contrast 2.11:1 PASS · single hue (3° spread) PASS.

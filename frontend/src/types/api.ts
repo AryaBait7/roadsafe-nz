@@ -110,6 +110,37 @@ export interface RoadTypeBreakdown {
 }
 
 /**
+ * GET /api/risk-factors
+ *
+ * Each condition's severe rate measured against the overall baseline, so the
+ * question "is this associated with worse outcomes" has a reference point
+ * rather than a bare percentage.
+ */
+export interface SeverityLift {
+  factor: string;
+  /** Which dimension it came from, e.g. "Speed environment". */
+  category: string;
+  crashCount: number;
+  severeCount: number;
+  severeRate: number;
+  /** severeRate minus baseline, in percentage points. */
+  lift: number;
+  /**
+   * True when the category represents *absent information* rather than a
+   * real condition — CAS's "Unknown" buckets. These produce some of the
+   * largest apparent lifts in the dataset and must never be presented as
+   * findings.
+   */
+  isMissingData: boolean;
+}
+
+export interface SeverityLiftReport {
+  /** Overall severe rate for the current filter set. */
+  baseline: number;
+  factors: SeverityLift[];
+}
+
+/**
  * GET /api/crashes/regions
  *
  * One row per regional council area. Used for comparison, not as chart

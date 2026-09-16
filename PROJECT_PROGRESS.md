@@ -4,7 +4,29 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 7 (Hotspots) — complete.** Next up: Stage 8 (Risk Factors).
+**Stage 8 (Risk Factors) — complete.** Next up: Stage 9 (ML Insights).
+
+### Stage 8 — Risk Factors (done 2026-09-16)
+
+`getSeverityLift()` measures every available condition against the baseline severe rate, because a condition's own rate means little in isolation — the gap from the overall rate is what answers "is this associated with worse outcomes".
+
+**Diverging form, because the question is polarity.** Bars grow from a central baseline rule: warm right for worse, cool left for better. The pair (`#a31621` / `#2e6fd9`) reuses existing validated tokens and passes all six checks on white (CVD ΔE 27.4 deutan / 30.9 tritan, normal-vision 32.4).
+
+**Measuring before charting caught three traps that would have made the page actively misleading:**
+
+| Trap | What it would have shown |
+|---|---|
+| `Speed environment: Unknown` — 22.86% severe on 1,562 crashes | Ranked as **New Zealand's single largest risk factor** (+16.13pp) |
+| `Light: Unknown` — 0.32% severe on 9,861 crashes | Ranked as the strongest **protective** factor (−6.40pp) |
+| `Over 100 km/h` — 4.09% severe on 806 crashes | A below-baseline "finding" from a very thin sample |
+
+"Unknown" is absent information, not a condition, so `SeverityLift` carries `isMissingData` as a *data* property and the page excludes those from the chart. A `MIN_SAMPLE` of 5,000 crashes gates the rest. Everything excluded is still listed with its real values in a "Held out of the chart" panel that explains why — nothing is hidden, it is just not charted as if it were a finding.
+
+**What the page actually shows** (19 charted factors): unsealed road **+6.22pp**, local road–open road **+5.42pp**, 81–100 km/h **+4.00pp**, Labour Weekend **+2.12pp**, state highway–open road **+2.11pp**, hill road **+1.78pp** — against 50 km/h or less at **−1.96pp**. The same rural-open-road story as Stages 5 and 7, now isolated per condition.
+
+**Adverse weather sits below baseline at −0.79pp** and gets its own panel explaining why that is not evidence poor weather is safe: the page measures severity *given a crash occurred*, and CAS holds no record of journeys that ended without incident. Language throughout is "associated with", never "causes" — verified in the rendered output.
+
+**Verified:** 19 charted factors matching the independently computed figures exactly; no "Unknown" in the chart; baseline 6.7% stated; 1,015px at 1440×900, no overflow; lint and build clean first pass.
 
 ### Stage 7 — Hotspots (done 2026-09-16)
 

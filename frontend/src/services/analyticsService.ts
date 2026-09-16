@@ -1,5 +1,13 @@
 import { loadFixture } from "./fixtures";
-import { isSevere, queryCube, rate, sum, totalCrashes } from "./dev/crashCube";
+import {
+  groupBy,
+  isSevere,
+  queryCube,
+  rate,
+  severeCrashes,
+  sum,
+  totalCrashes,
+} from "./dev/crashCube";
 import type {
   ApiResponse,
   ConditionFactor,
@@ -9,6 +17,8 @@ import type {
   Hotspot,
   HotspotDetail,
   SeverityBreakdownItem,
+  SeverityLift,
+  SeverityLiftReport,
 } from "@/types";
 
 const SEVERITY_ORDER: readonly CrashSeverity[] = [
@@ -89,6 +99,112 @@ export async function getContributingFactors(
     .sort((a, b) => b.crashCount - a.crashCount);
 
   return { data, meta };
+}
+
+/**
+ * Every available condition, measured against the baseline severe rate.
+ *
+ * This is the Risk Factors page's whole argument: a condition's own severe
+ * rate means little on its own, but the gap between it and the overall rate
+ * says whether crashes under that condition tend to be worse.
+ *
+ * Deliberately reports *association*, never cause. CAS has no causal field,
+ * and the data actively punishes the assumption — adverse weather sits below
+ * the baseline, almost certainly because bad conditions suppress speed.
+ *
+ * Later: apiGet<SeverityLiftReport>("/api/risk-factors", filters)
+ */
+export async function getSeverityLift(
+  filters: CrashFilters = {},
+): Promise<ApiResponse<SeverityLiftReport>> {
+  const { rows, meta } = await queryCube(filters);
+
+  const total = totalCrashes(rows);
+  const baseline = rate(severeCrashes(rows), total);
+
+  const factors: SeverityLift[] = [];
+
+  const addDimension = (
+    category: string,
+    key: (row: (typeof rows)[number]) => string,
+  ) => {
+    for (const [value, group] of groupBy(rows, key)) {
+      const crashCount = totalCrashes(group);
+      if (crashCount === 0) continue;
+
+      const severeCount = severeCrashes(group);
+      const severeRate = rate(severeCount, crashCount);
+
+      factors.push({
+        factor: value,
+        category,
+        crashCount,
+        severeCount,
+        severeRate,
+        lift: severeRate - baseline,
+        isMissingData: value === "Unknown",
+      });
+    }
+  };
+
+  addDimension("Speed environment", (row) => row.speedEnvironment);
+  addDimension("Light", (row) => row.light);
+  addDimension("Road type", (row) => row.roadType);
+
+  // Holiday periods only: "Not a holiday period" is the complement of the
+  // others, not a condition, and at 94% of crashes it simply restates the
+  // baseline.
+  for (const [value, group] of groupBy(rows, (row) => row.holiday)) {
+    if (value === "Not a holiday period") continue;
+
+    const crashCount = totalCrashes(group);
+    if (crashCount === 0) continue;
+
+    const severeCount = severeCrashes(group);
+    const severeRate = rate(severeCount, crashCount);
+
+    factors.push({
+      factor: value,
+      category: "Holiday period",
+      crashCount,
+      severeCount,
+      severeRate,
+      lift: severeRate - baseline,
+      isMissingData: false,
+    });
+  }
+
+  // Condition flags are counts of crashes where the condition was recorded,
+  // so they are summed rather than grouped.
+  const severeRows = rows.filter(isSevere);
+  const flags: [string, string, (row: (typeof rows)[number]) => number][] = [
+    ["Adverse weather", "Weather", (row) => row.adverseWeather],
+    ["Unsealed road", "Road surface", (row) => row.unsealedRoad],
+    ["Hill road", "Road geometry", (row) => row.hillRoad],
+    ["No traffic control", "Traffic control", (row) => row.noTrafficControl],
+  ];
+
+  for (const [factor, category, pick] of flags) {
+    const crashCount = sum(rows, pick);
+    if (crashCount === 0) continue;
+
+    const severeCount = sum(severeRows, pick);
+    const severeRate = rate(severeCount, crashCount);
+
+    factors.push({
+      factor,
+      category,
+      crashCount,
+      severeCount,
+      severeRate,
+      lift: severeRate - baseline,
+      isMissingData: false,
+    });
+  }
+
+  factors.sort((a, b) => b.lift - a.lift);
+
+  return { data: { baseline, factors }, meta };
 }
 
 /**
