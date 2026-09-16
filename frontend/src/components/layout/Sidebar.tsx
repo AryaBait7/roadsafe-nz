@@ -95,12 +95,12 @@ export function Sidebar({ options }: { options?: FilterOptions }) {
   return (
     <>
       {/* Desktop: always-visible column */}
-      <aside className="hidden w-52 shrink-0 overflow-y-auto bg-navy-950 lg:block">
+      <aside className="hidden w-52 shrink-0 overflow-y-auto bg-navy-950 lg:block print:hidden">
         <SidebarContent options={options} />
       </aside>
 
       {/* Mobile: top bar + drawer */}
-      <div className="flex h-14 items-center gap-3 bg-navy-950 px-4 lg:hidden">
+      <div className="flex h-14 items-center gap-3 bg-navy-950 px-4 lg:hidden print:hidden">
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}

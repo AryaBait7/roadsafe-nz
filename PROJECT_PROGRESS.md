@@ -4,7 +4,17 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 9 (ML Insights) — complete as an honest pre-model page.** Next up: Stage 10 (Reports).
+**Stage 10 (Reports) — complete.** Next up: Stage 11 (Data Dictionary).
+
+### Stage 10 — Reports (done 2026-09-16)
+
+No pre-made documents. Everything on the page is generated from the live aggregates for the current filters:
+
+- **Summary of the current view** — headline, top regions and the strongest/weakest conditions, written from real figures. "Print or save as PDF" uses the browser's print dialog; print styles hide the sidebar, filter chips and export controls so the output is the summary alone.
+- **Five CSV exports** (trends, severity, regions, conditions vs baseline incl. the missing-data flag, hotspots), built in the browser from the same rows the page rendered, with filenames scoped to the year range. The writer quotes values, neutralises formula-leading cells (`= + - @`) against CSV injection, and prepends a UTF-8 BOM so Excel reads macrons correctly.
+- **Planned reports** (regional PDFs, model evaluation report, scheduled summaries) listed with what each needs — no download buttons.
+
+**Verified** with Waikato 2020–2024: summary reads 19,383 crashes, 1,415 serious, 274 fatal (8.7%), 304 killed, 9,306 injured — matching Stage 3's filtering; the intercepted regions CSV contained `Waikato Region,19383,1689,0.0871` (1,689 = 1,415 + 274) under `roadsafe-nz_regions_2020-2024.csv`. No overflow; lint and build clean.
 
 ### Stage 9 — ML Insights (done 2026-09-16)
 
