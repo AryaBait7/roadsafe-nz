@@ -4,7 +4,7 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 5 (Crash Trends) — complete.** Next up: Stage 6 (Map Explorer), which also backfills the dashboard's outstanding hotspots map.
+**Stage 6 (Map Explorer) — complete**, including the dashboard hotspots map that was outstanding from Stage 4. Next up: Stage 7 (Hotspots).
 
 > **Build order changed 2026-09-12, restated 2026-09-16.** Build the complete application first, then study it via [LEARNING_GUIDE.md](LEARNING_GUIDE.md). The target architecture is unchanged — see [DECISIONS.md](DECISIONS.md) #10 and [ARCHITECTURE.md](ARCHITECTURE.md). Data work already completed (below) still stands.
 
@@ -15,9 +15,9 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 | 1 | Audit + stabilise frontend architecture | ✅ Complete |
 | 2 | Cinematic landing page | ✅ Complete |
 | 3 | App shell: sidebar, header, routing, global filters | ✅ Complete |
-| 4 | Dashboard | 🟡 Panels complete; hotspots map deferred to Stage 6 |
+| 4 | Dashboard | ✅ Complete (hotspots map backfilled in Stage 6) |
 | 5 | Crash Trends | ✅ Complete |
-| 6 | Map Explorer | 🔲 |
+| 6 | Map Explorer | ✅ Complete |
 | 7 | Hotspots | 🔲 |
 | 8 | Risk Factors | 🔲 |
 | 9 | ML Insights | 🔲 |
@@ -63,6 +63,30 @@ The service layer previously pointed at fixture files that did not exist, so eve
 - **Data-quality flag**: crashes with `light = "Unknown"` show a 0.32% severe rate (32 of 9,861) — far too low to be real, so "Unknown" is likely a recording artifact rather than a category. Should be excluded from rate comparisons.
 
 Also written this stage: [ARCHITECTURE.md](ARCHITECTURE.md) and [LEARNING_GUIDE.md](LEARNING_GUIDE.md) (15 topics with interview questions).
+
+### Stage 6 — Map Explorer (done 2026-09-16)
+
+Leaflet + OpenStreetMap, no new dependencies. Also backfills the dashboard's hotspots panel, which was deferred from Stage 4.
+
+**The fixture got smaller while gaining a capability.** The region filter did nothing on the map because `map-cells.json` had no region dimension. But a cell sits in exactly one region, so region is *cell metadata*, not a row dimension — 6,103 entries rather than 61,008. Restructuring rows to reference a cell index instead of repeating `lat`/`lon` on every row took the file from **1.48MB to 1.08MB** *and* added region filtering. Re-verified after the restructure: 705,609 / 47,445 still reconcile exactly, all 6,103 cell indices in range.
+
+**Colour bins are fixed log decades, deliberately not quantiles.** The distribution is extreme — median 11 crashes per cell, max 25,172, top 1% of cells holding 52.5% of all crashes — so linear breaks put the whole country in one bin. Quantiles fix that but **recompute on every filter change**, repainting cells whose value never moved; that is the recolor-on-filter anti-pattern. Fixed bins (1–10 / 11–100 / 101–1,000 / 1,001+) keep colour meaning stable and map onto the four validated ramp steps.
+
+Measured spread, which confirms the choice: 48.5% / 39.7% / 10.0% / 1.9% of cells, with the top bin holding 444,854 crashes.
+
+**Performance:** all 6,103 cells go into a *single* `<GeoJSON>` layer with Leaflet's canvas renderer, not 6,103 React components — reconciling thousands of components per pan would make the map unusable.
+
+**Other decisions:**
+- **No `leaflet.heat` or `leaflet.markercluster`.** The grid *is* a binned density surface and the TLA aggregation *is* the cluster view, so the spec's heatmap/cluster intent is met without two more dependencies.
+- **Antimeridian:** 24 Chatham Islands cells sit at ≈ −176.7°, which would otherwise stretch the viewport across the globe from a mainland at +166 to +179. They are unwrapped to ≈ +183 so the range is contiguous and the default view fits the mainland.
+- **Popups are built as DOM nodes with `textContent`**, not HTML strings — labels are data, and string-concatenated `innerHTML` is the wrong habit even for your own data.
+- **The map states which filters it cannot honour.** Road type, speed environment and severity are not carried at cell grain; rather than silently ignoring them, the page says so.
+
+**Verified:** 20/20 OSM tiles load; canvas renderer active; cells render as proper graduated squares when zoomed (confirmed over Nelson/Tasman); clicking a cell opens a popup reading "Nelson Region · Crashes: 306 · Serious or fatal: 21 · Severe rate: 6.9% · Cell centre: −41.25, 173.25"; dashboard map mounts at 378px with no horizontal overflow.
+
+**Known, accepted:** on the "Serious & fatal" view the 1,001+ bin is empty (no cell has that many severe crashes). The legend still shows it, because a legend that reshuffles per view would make the two views incomparable — which is the same reason quantile bins were rejected.
+
+**Data-quality note:** one cell sits at `[-47.5, 179.0]` with region "Unknown" — open ocean southeast of the mainland, near the Bounty Islands, where no roads exist. Almost certainly a bad coordinate in CAS. One cell of 6,103, left in rather than silently filtered.
 
 ### Stage 5 — Crash Trends (done 2026-09-16)
 

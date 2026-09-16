@@ -1,0 +1,26 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/Skeleton";
+import type { MapCrashPoint } from "@/types";
+
+/**
+ * Client-side loader for the map.
+ *
+ * Leaflet reads `window` at module scope, so it cannot be imported during
+ * server rendering — hence `ssr: false`. That option is not permitted inside
+ * a Server Component in the App Router, which is why this thin client wrapper
+ * exists rather than the page importing the map directly.
+ */
+const CrashMap = dynamic(() => import("./CrashMap"), {
+  ssr: false,
+  loading: () => <Skeleton className="h-[70vh] w-full" />,
+});
+
+export function CrashMapLoader(props: {
+  points: MapCrashPoint[];
+  gridDegrees: number;
+  height?: string;
+}) {
+  return <CrashMap {...props} />;
+}

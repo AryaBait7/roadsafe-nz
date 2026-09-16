@@ -253,11 +253,35 @@ def build_map_cells(df: pd.DataFrame) -> dict:
     Coordinates are snapped to a grid rather than published per crash: the
     browser cannot render 705,609 markers, and aggregated cells avoid
     publishing the precise location of individual incidents.
+
+    Geometry is split out as cell metadata and the counts reference it by
+    index. A cell sits in exactly one region, so carrying region here costs
+    6,103 entries instead of the 61,008 it would cost as a row dimension —
+    and it is what lets the map honour the region filter. Not repeating the
+    coordinates on every row makes the file smaller despite the addition.
     """
     cells = df.assign(
         cellLat=(df["latitude"] / GRID_DEGREES).round() * GRID_DEGREES,
         cellLon=(df["longitude"] / GRID_DEGREES).round() * GRID_DEGREES,
     )
+
+    # A 0.05 degree cell can straddle a boundary; the modal region is the
+    # honest assignment and is only used for filtering, never for reporting
+    # a region's totals (those come from the cube).
+    cell_region = (
+        cells.groupby(["cellLat", "cellLon"], observed=True)["region"]
+        .agg(lambda values: values.mode().iat[0])
+        .reset_index()
+        .sort_values(["cellLat", "cellLon"])
+        .reset_index(drop=True)
+    )
+
+    regions = sorted(cell_region["region"].unique())
+    region_index = {name: i for i, name in enumerate(regions)}
+    cell_index = {
+        (row.cellLat, row.cellLon): i
+        for i, row in enumerate(cell_region.itertuples(index=False))
+    }
 
     grouped = (
         cells.groupby(["cellLat", "cellLon", "crashYear"], observed=True)
@@ -267,11 +291,17 @@ def build_map_cells(df: pd.DataFrame) -> dict:
 
     return {
         "gridDegrees": GRID_DEGREES,
-        "columns": ["latitude", "longitude", "crashYear", "crashCount", "severeCount"],
+        # [latitude, longitude, regionIndex] per cell.
+        "cells": [
+            [round(float(row.cellLat), 4), round(float(row.cellLon), 4),
+             region_index[row.region]]
+            for row in cell_region.itertuples(index=False)
+        ],
+        "regions": regions,
+        "columns": ["cellIndex", "crashYear", "crashCount", "severeCount"],
         "rows": [
             [
-                round(float(row.cellLat), 4),
-                round(float(row.cellLon), 4),
+                cell_index[(row.cellLat, row.cellLon)],
                 int(row.crashYear),
                 int(row.crashCount),
                 int(row.severeCount),

@@ -5,6 +5,15 @@ import { BarList } from "@/components/charts/BarList";
 import { SeverityBar } from "@/components/charts/SeverityBar";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { DataTable } from "@/components/charts/DataTable";
+import { EmptyState } from "@/components/states/EmptyState";
+import { CrashMapLoader } from "@/components/maps/CrashMapLoader";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/Card";
 import { KpiRow } from "@/features/dashboard/KpiRow";
 import { ModelPreview } from "@/features/dashboard/ModelPreview";
 import { parseFilters } from "@/lib/filters";
@@ -12,6 +21,8 @@ import { formatNumber, formatPercent } from "@/lib/formatters";
 import { getFilterOptions, getSummary } from "@/services/dashboardService";
 import {
   getLightConditions,
+  getMapGridDegrees,
+  getMapPoints,
   getRoadTypes,
   getSeverityBreakdown,
   getTrends,
@@ -28,17 +39,29 @@ export default async function DashboardPage({
 
   // Independent aggregates over the same cube — awaiting them in sequence
   // would serialise seven reads for no reason.
-  const [summary, severity, factors, light, roadTypes, trends, options, importance] =
-    await Promise.all([
-      getSummary(filters),
-      getSeverityBreakdown(filters),
-      getContributingFactors(filters),
-      getLightConditions(filters),
-      getRoadTypes(filters),
-      getTrends(filters),
-      getFilterOptions(),
-      getFeatureImportance(),
-    ]);
+  const [
+    summary,
+    severity,
+    factors,
+    light,
+    roadTypes,
+    trends,
+    options,
+    importance,
+    mapPoints,
+    gridDegrees,
+  ] = await Promise.all([
+    getSummary(filters),
+    getSeverityBreakdown(filters),
+    getContributingFactors(filters),
+    getLightConditions(filters),
+    getRoadTypes(filters),
+    getTrends(filters),
+    getFilterOptions(),
+    getFeatureImportance(),
+    getMapPoints(filters),
+    getMapGridDegrees(),
+  ]);
 
   // The most recent year is incomplete, so plotting it makes the series look
   // like crashes collapsed. Dropped from the line, kept in the table. Guarded
@@ -126,6 +149,32 @@ export default async function DashboardPage({
             />
           }
         />
+
+        <Card>
+          <CardHeader>
+            <div className="min-w-0">
+              <CardTitle>New Zealand crash hotspots</CardTitle>
+              <CardDescription>
+                Crash density on a {gridDegrees}° grid. Click any cell for its
+                figures, or open Map Explorer for the full view.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardBody>
+            {mapPoints.data.length === 0 ? (
+              <EmptyState
+                title="No crashes match these filters"
+                description="Try widening the year range or clearing the region filter."
+              />
+            ) : (
+              <CrashMapLoader
+                points={mapPoints.data}
+                gridDegrees={gridDegrees}
+                height="380px"
+              />
+            )}
+          </CardBody>
+        </Card>
 
         <div className="grid gap-4 xl:grid-cols-2">
           <ChartPanel

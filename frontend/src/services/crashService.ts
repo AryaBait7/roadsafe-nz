@@ -205,6 +205,9 @@ export async function getSeverityTrends(
 
 interface MapCellFixture {
   gridDegrees: number;
+  /** [latitude, longitude, regionIndex] per cell. */
+  cells: number[][];
+  regions: string[];
   columns: string[];
   rows: number[][];
 }
@@ -226,32 +229,49 @@ export async function getMapPoints(
   );
   const at = Object.fromEntries(data.columns.map((name, i) => [name, i]));
 
-  const cells = new Map<string, MapCrashPoint>();
+  // Year and region are honoured. Road type, speed environment and severity
+  // are not carried at cell grain — adding them would multiply the payload,
+  // and the PostGIS query will handle them properly. The UI says so rather
+  // than silently returning unfiltered counts.
+  const totals = new Map<number, { crashCount: number; severeCount: number }>();
 
   for (const row of data.rows) {
     const year = row[at.crashYear];
     if (filters.yearFrom !== undefined && year < filters.yearFrom) continue;
     if (filters.yearTo !== undefined && year > filters.yearTo) continue;
 
-    const latitude = row[at.latitude];
-    const longitude = row[at.longitude];
-    const key = `${latitude},${longitude}`;
+    const index = row[at.cellIndex];
+    const running = totals.get(index);
 
-    const existing = cells.get(key);
-    if (existing) {
-      existing.crashCount += row[at.crashCount];
-      existing.severeCount += row[at.severeCount];
+    if (running) {
+      running.crashCount += row[at.crashCount];
+      running.severeCount += row[at.severeCount];
     } else {
-      cells.set(key, {
-        latitude,
-        longitude,
+      totals.set(index, {
         crashCount: row[at.crashCount],
         severeCount: row[at.severeCount],
       });
     }
   }
 
-  return { data: [...cells.values()], meta };
+  const points: MapCrashPoint[] = [];
+
+  for (const [index, counts] of totals) {
+    const [latitude, longitude, regionIndex] = data.cells[index];
+    const region = data.regions[regionIndex];
+
+    if (filters.region && region !== filters.region) continue;
+
+    points.push({ latitude, longitude, region, ...counts });
+  }
+
+  return { data: points, meta };
+}
+
+/** Grid resolution, so the map can draw cells at their true size. */
+export async function getMapGridDegrees(): Promise<number> {
+  const { data } = await loadFixture<ApiResponse<MapCellFixture>>("map-cells");
+  return data.gridDegrees;
 }
 
 export { isLowLight, isSevere };

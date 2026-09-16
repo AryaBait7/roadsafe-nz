@@ -159,6 +159,8 @@ export interface MapCrashPoint {
   longitude: number;
   crashCount: number;
   severeCount: number;
+  /** Modal region for the cell — used for filtering and popup context. */
+  region: string;
 }
 
 /** GET /api/ml/metrics — placeholder until a model is trained in Stage 19. */

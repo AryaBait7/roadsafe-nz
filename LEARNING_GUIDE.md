@@ -598,7 +598,66 @@ editing anything.
 
 ---
 
-## 26. Verifying work instead of assuming it
+## 26. Choosing map bins: fixed beats quantile
+
+**What**: the crash density map colours 6,103 grid cells using fixed
+log-decade bins (1–10, 11–100, 101–1,000, 1,001+) rather than quantiles.
+
+**Why not linear**: the distribution is extreme — median 11 crashes per cell,
+max 25,172, and the **top 1% of cells hold 52.5% of all crashes**. Equal-width
+breaks put essentially the whole country in the lightest bin.
+
+**Why not quantiles** (the subtle one): quantile breaks are recomputed from
+whatever data is currently displayed. Filter to one region and every surviving
+cell can change colour without its value changing. That is the
+**recolor-on-filter** anti-pattern — colour must follow the entity, not its
+rank. Fixed bins mean a given colour always means the same count.
+
+**Where**: `frontend/src/components/maps/CrashMap.tsx`
+
+**Concepts to learn**: choropleth classification (equal interval, quantile,
+Jenks natural breaks, log); skewed distributions; why a legend must stay stable
+across views.
+
+**Interview questions**
+- Your map's colours change when the user filters. Why is that a bug?
+- When is a quantile scale appropriate, and when is it misleading?
+- How do you colour a heavily skewed distribution fairly?
+
+---
+
+## 27. Libraries that touch `window`, and rendering thousands of shapes
+
+**What**: Leaflet reads `window` at module scope, so it cannot be imported
+during server rendering. It loads via `next/dynamic` with `ssr: false` — and
+that option is **not permitted inside a Server Component** in the App Router,
+which is why a thin client-side loader component exists purely to perform the
+dynamic import.
+
+**The performance half**: 6,103 cells are rendered as a *single* `<GeoJSON>`
+layer with Leaflet's canvas renderer, not 6,103 React components. Thousands of
+components would each need reconciling on every pan and zoom.
+
+**The payload half**: the map fixture originally repeated `latitude` and
+`longitude` on all 61,008 rows. Splitting geometry into a 6,103-entry cell list
+that rows reference by index took the file from **1.48MB to 1.08MB** *while
+adding* a region dimension — a normalisation that paid for a new feature.
+
+**Where**: `components/maps/CrashMapLoader.tsx`, `components/maps/CrashMap.tsx`,
+`data-pipeline/src/generate_frontend_fixtures.py`
+
+**Concepts to learn**: SSR vs client-only libraries; code splitting; SVG vs
+canvas rendering trade-offs; normalising a denormalised payload; why the
+antimeridian breaks naive map bounds.
+
+**Interview questions**
+- A library crashes during SSR. What are your options?
+- How would you render 100,000 points on a web map?
+- Your JSON payload is too big. Where do you look first?
+
+---
+
+## 28. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182
