@@ -439,3 +439,19 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: SHAP panels state that they explain the model, and the page calls out that the largest pushes in both directions come from "Unknown" levels.
 
 **Why**: SHAP is frequently read as causal evidence. Here it is a faithful description of a model that has partly learned CAS's recording habits — an unrecorded light condition pushes hard away from "severe" because such records are overwhelmingly non-injury crashes. Presenting that as a finding about darkness would be wrong twice over. It is disclosed, and noted as the first thing to fix in a refit.
+
+---
+
+## 52. The API owns the aggregation; the frontend's copy is deleted at Stage 23
+
+**Decision**: the cube and service logic were copied into `backend/` unchanged for Stage 22, leaving two copies for one stage. Stage 23 deletes `frontend/src/services/dev/` and rewires the services to `apiGet`.
+
+**Why**: the alternative was a shared workspace package, which means npm workspaces, `transpilePackages` and a restructure of a frontend that currently works — a large change to avoid one stage of duplication. Copying kept the risk at zero and the figures identical, and both test suites assert the same reconciled totals, so drift fails a test rather than reaching a page. The duplication has a fixed end date, not an intention.
+
+---
+
+## 53. Errors are typed, and only safe messages cross the wire
+
+**Decision**: `404` for unknown routes, `503` with the exact remedy for a missing fixture, `500` generic for everything else; every response carries `{ error: { code, message } }`.
+
+**Why**: a missing fixture is an operator problem whose fix is a command, so naming it saves a debugging session. An unexpected error could carry file paths or stack traces, which belong in the server log, not in a response. Machine-readable codes mean the frontend can distinguish "no data yet" from "something broke" without parsing prose.

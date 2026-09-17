@@ -944,7 +944,20 @@ Two runs gave the same fingerprint and changed no fixture.
 
 ---
 
-## 45. Verifying work instead of assuming it
+## 45. Designing a REST API against an existing contract
+
+**What**: the API was easy to write because the shape was fixed in Stage 1: every service already returned `{ data, meta }`, so the routes are three lines each — parse the query, call the service, send the envelope. Express specifics that mattered: a single error-handling middleware so no route repeats try/catch, `compression()` (600KB → 38.7KB on the map route), `Cache-Control` because aggregates only change when the pipeline runs, and CORS limited to the frontend's origin.
+
+**Interview questions**
+- What does designing the response envelope before the API buy you?
+- Why does the map route return cells, grid resolution and the unmapped count together?
+- How do you decide what an error response may say? What does a 503 mean here versus a 500?
+- Why is the same query-parsing code used on both sides?
+- You have the same aggregation in two places for one stage. How do you keep them honest? (both suites assert the same measured totals)
+
+---
+
+## 46. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

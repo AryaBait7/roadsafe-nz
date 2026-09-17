@@ -28,6 +28,17 @@
         "3200"
       ],
       "port": 3200
+    },
+    {
+      "name": "roadsafe-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "backend",
+        "run",
+        "dev"
+      ],
+      "port": 4000
     }
   ]
 }

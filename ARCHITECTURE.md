@@ -1,7 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
-Reflects the implementation as of Stage 21 (2026-09-18).
+Reflects the implementation as of Stage 22 (2026-09-18).
 
 ## Target architecture
 
@@ -33,7 +33,7 @@ order — see [DECISIONS.md](DECISIONS.md) #10 and #21.
 |---|---|---|
 | Data source | PostgreSQL/PostGIS via Express | Pre-aggregated JSON fixtures on disk, generated from the real CAS data |
 | Aggregation | SQL `GROUP BY` in the database | In-memory group-by over a cube (`services/dev/crashCube.ts`) |
-| Transport | HTTP to Express | Direct function call from Server Components |
+| Transport | HTTP to Express | Express API built and tested (Stage 22); the frontend still calls services directly until Stage 23 |
 | ML metrics | Trained model + SHAP | XGBoost trained by `train_model.py`; metrics and permutation importance shipped as fixtures. SHAP is Stage 21 |
 | ML training-data facts | Served by the API | Real, computed from the cube (`getTrainingDataProfile`) |
 | Exports | Server-side report generation | CSV built in the browser from rendered rows; print-to-PDF |
@@ -69,6 +69,33 @@ Rules that keep the seam intact:
 it, and the Express API will never serve raw rows either — it will serve
 aggregates. So the frontend is built against aggregates from day one, and the
 fixture shape *is* the API contract.
+
+## The API (Stage 22)
+
+`backend/` is Express 5 on TypeScript, serving 22 routes under `/api` plus
+`/health`. Every response is the `ApiResponse<T>` envelope, so the frontend's
+service bodies swap a function call for `apiGet` and nothing above them
+changes.
+
+```
+backend/src/
+  app.ts            routes, CORS, gzip, cache headers, typed error handling
+  server.ts         listen
+  filters.ts        the same query parsing the frontend uses
+  data/fixtures.ts  the data source — swapped for PostGIS at Stage 18
+  data/cube.ts      in-memory group-by (ported from the frontend)
+  services/         the same five services, unchanged
+  tests/api.test.ts supertest, asserting the reconciled CAS totals
+```
+
+Configuration is environment-only (`PORT`, `CORS_ORIGIN`, `FIXTURES_DIR`); see
+`backend/.env.example`. Nothing is hard-coded and no credentials are involved
+while the source is files.
+
+**Deliberate duplication, ending at Stage 23.** The cube and services exist in
+both `frontend/src/services` and `backend/src` during this stage. They were
+copied unchanged, both suites assert the same reconciled totals, and the
+frontend copy is deleted when its services start calling the API.
 
 ## Service inventory
 

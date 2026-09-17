@@ -4,7 +4,34 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 21 (Explainability) — complete. Stage 18 (PostgreSQL + PostGIS) — paused, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+**Stage 22 (REST API) — complete. Stage 18 (PostgreSQL + PostGIS) — paused, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+
+### Stage 22 — Node/Express REST API (done 2026-09-18)
+
+`backend/` now serves everything the frontend reads, in the `ApiResponse<T>` envelope the services have produced since Stage 1. Express 5 on TypeScript, 22 routes.
+
+| Group | Routes |
+|---|---|
+| Dashboard | `/api/dashboard/summary`, `/api/dashboard/totals`, `/api/filters` |
+| Crashes | `/api/crashes/{trends,severity,severity-trends,light,road-types,regions,holidays,factors}` |
+| Map | `/api/map/crashes` — cells, grid resolution and the unmapped count in one response |
+| Hotspots | `/api/hotspots`, `/api/hotspots/:id` |
+| Risk factors | `/api/risk-factors`, `/api/risk-factors/baseline`, `/api/risk-factors/adjusted` |
+| Model | `/api/ml/{metrics,feature-importance,explain,scenarios,training-data}` |
+| Dataset | `/api/dataset/dictionary` |
+| Ops | `/health` — status, uptime, and which fixtures are present |
+
+**The aggregation logic was ported, not rewritten.** The cube, services and filter parsing were copied from the frontend unchanged, so the API returns byte-identical figures. That duplication is deliberate and ends in Stage 23, when the frontend's `services/dev/` is deleted and its services call `apiGet`. Both test suites assert the same reconciled totals, so any drift in the meantime fails one side.
+
+**Behaviour:**
+- Filters use the same query keys the frontend already puts in the URL, parsed by the same rules: unknown values are dropped rather than rejected, and a reversed year range is swapped. A hand-edited URL widens the result set instead of erroring.
+- Errors are typed: `404` with `{ error: { code, message } }` for unknown routes, `503` for a missing fixture (message names the pipeline command, because that is an operator problem with a known fix), `500` generic — stack traces and internal paths stay server-side.
+- `Cache-Control: public, max-age=60`, since aggregates change only when the pipeline runs.
+- gzip: `/api/map/crashes` drops from **600KB to 38.7KB**.
+
+**Measured on the running server:** trends 32ms, map 68ms, hotspots 33ms, risk factors 78ms, scenarios 5ms. Waikato 2020–2024 returns 19,383 / 1,415 / 274, matching every other path.
+
+**Tests:** 13 API tests through supertest, asserting the envelope, the cache header, health, structured 404s, the national reconciliation (severity, trends, map + unmapped, hotspots + unattributed all re-totalling to 705,609), the filter rules, and that the model routes serve measured values.
 
 ### Stage 21 — Explainability (done 2026-09-18)
 
@@ -431,7 +458,8 @@ Seven requested changes, all against the existing components — no rebuild.
 | 19 | Analytics layer | ✅ Complete |
 | 20 | Severity model | ✅ Complete |
 | 21 | Explainability (SHAP) | ✅ Complete |
-| 22 | Node/Express REST API | ⏭️ Next |
+| 22 | Node/Express REST API | ✅ Complete |
+| 23 | Connect frontend to the API | ⏭️ Next |
 | 22 | Node/Express REST API | 🔲 |
 | 23 | Connect frontend to real API | 🔲 |
 | 24–27 | AWS, CI/CD, testing, portfolio docs | 🔲 |
@@ -673,7 +701,7 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 22 — Node/Express REST API.** Serve what the services already define (`ApiResponse<T>` shapes), then Stage 23 points the frontend at it. The API can read the fixtures until Stage 18's database is unblocked.
+1. **Stage 23 — connect the frontend to the API.** Switch service bodies to `apiGet`, delete `frontend/src/services/dev/` and the duplicated aggregation, and decide what the pages do when the API is down (the Stage 14 error boundary already covers a failed fetch).
 2. **Worth doing to the model:** refit without the "Unknown" levels, which SHAP shows it leaning on.
 2. **Stage 18 — PostgreSQL + PostGIS** remains blocked on Docker; see that section for options and resume steps.
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.

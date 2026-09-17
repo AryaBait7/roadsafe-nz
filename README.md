@@ -19,6 +19,8 @@ the app states the model's limits rather than overselling it.
   random ranking.
 - **Explainability (Stage 21):** SHAP contributions and a scenario explorer
   that shows how much evidence each combination actually has.
+- **API (Stage 22):** Express + TypeScript, 22 routes, tested against the same
+  reconciled totals as the frontend.
 - **Blocked:** PostgreSQL + PostGIS (Stage 18) — Docker will not start here.
 - **Planned:** explainability, API and AWS (Stages 21–27).
 
@@ -34,7 +36,7 @@ columns: [DATA_DICTIONARY.md](DATA_DICTIONARY.md)
 | Frontend | Next.js 16, React 19, TypeScript, Tailwind v4, Recharts, Leaflet, Vitest | Built |
 | Database | PostgreSQL + PostGIS | Planned |
 | Analytics + ML | pandas, statsmodels, scikit-learn, XGBoost, SHAP | Built |
-| API | Node.js / Express | Planned |
+| API | Node.js / Express 5, TypeScript, supertest | Built |
 | Cloud | AWS (S3, RDS, Amplify, Secrets Manager, CloudWatch), GitHub Actions | Planned |
 
 ## Structure
@@ -47,7 +49,9 @@ data-pipeline/
   data/processed/   cleaned + feature CSVs, pipeline_run.json (gitignored)
   notebooks/        exploration and EDA
 frontend/           Next.js app; reads fixtures in src/data/fixtures via services/
-backend/            Express API (planned)
+backend/
+  src/              routes, services, fixtures data source
+  tests/            supertest API tests
 ```
 
 ## Running the data pipeline
@@ -69,6 +73,20 @@ python -m pytest                      # unit tests
 record (`data/processed/pipeline_run.json`) shows which snapshot produced
 the published figures.
 
+## Running the API
+
+From `backend/`:
+
+```bash
+npm install
+npm run dev        # http://localhost:4000, /health lists available data
+npm test
+```
+
+It reads the pipeline's aggregates (`FIXTURES_DIR`, default
+`../frontend/src/data/fixtures`) until the Stage 18 database is available. See
+`backend/.env.example` for `PORT` and `CORS_ORIGIN`.
+
 ## Running the frontend
 
 The frontend ships with the generated fixtures, so it runs without the
@@ -88,7 +106,7 @@ npm test
 19. ✅ Analytics layer
 20. ✅ Severity model (baseline → logistic regression → random forest → XGBoost)
 21. ✅ Explainability (SHAP)
-22. 🔲 Node/Express REST API
+22. ✅ Node/Express REST API
 23. 🔲 Connect frontend to the API
 24–26. 🔲 AWS deployment, CI/CD, security, monitoring, final testing
 27. 🔲 Portfolio documentation
