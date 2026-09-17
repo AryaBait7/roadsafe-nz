@@ -56,6 +56,13 @@ Docker Desktop 4.84.0 starts, then its backend crashes and shows an error dialog
 - On restart, Docker recreated `run\dockerInference` in the same broken state, then also failed on `%LOCALAPPDATA%\docker-secrets-engine\engine.sock`.
 - WSL distro `docker-desktop` stayed Stopped. Nothing in WSL or in Docker's data was modified. Next attempt: a Windows restart.
 
+#### Retry after restarting Windows (2026-09-18): still failing
+
+- Windows was restarted at 00:52. Afterwards the socket stubs `Docker\run\dockerInference` and `docker-secrets-engine\engine.sock` were readable again.
+- Docker Desktop was started at 00:56 and **crashed the same way within a minute**: "remove …\Docker\run\dockerInference: The file cannot be accessed by the system".
+- Nothing in Docker or WSL was changed. Drive C is **99% full (3.7GB free)**.
+- A restart alone does not fix this. The possible next steps all need the owner's decision, because they touch Docker itself: update or repair Docker Desktop, turn off Docker Model Runner (which owns the `dockerInference` socket), or free disk space and retry. The alternative is native PostgreSQL 18 with PostGIS.
+
 #### Resume steps after restarting Windows
 
 Run from the repo root in Git Bash unless noted.
