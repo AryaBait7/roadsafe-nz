@@ -18,11 +18,17 @@ import path from "node:path";
  */
 const FIXTURES_DIR = path.join(process.cwd(), "src", "data", "fixtures");
 
+/** Which pipeline script writes each fixture, so the error names the right fix. */
+const GENERATORS: Record<string, string> = {
+  "data-dictionary": "generate_data_dictionary.py",
+};
+
 export class FixtureMissingError extends Error {
   constructor(name: string) {
+    const script = GENERATORS[name] ?? "generate_frontend_fixtures.py";
     super(
-      `Fixture "${name}.json" not found. Generate the fixture set by running ` +
-        `"python src/generate_frontend_fixtures.py" from data-pipeline/.`,
+      `Fixture "${name}.json" not found. Generate it by running ` +
+        `"python src/${script}" from data-pipeline/.`,
     );
     this.name = "FixtureMissingError";
   }

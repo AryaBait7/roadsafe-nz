@@ -838,7 +838,20 @@ print dialog with print-only styles.
 
 ---
 
-## 38. Verifying work instead of assuming it
+## 38. Suspense boundaries, streaming and error recovery
+
+**What**: `loading.tsx` wraps a route in `<Suspense>`. The server sends the fallback first, then streams the real content in a hidden `<div id="S:n">` with a small script to swap it in; React 19.2 batches that swap onto animation frames. `error.tsx` is an error boundary, which must be a Client Component. Its `reset()` re-renders the client subtree only, so a failure in a Server Component also needs `router.refresh()`.
+
+**Interview questions**
+- What does a user see during streaming SSR, and what does a crawler get?
+- Why must `error.tsx` be a Client Component?
+- Why didn't "Try again" work at first, and how was it fixed?
+- Why does production show a digest instead of the error message?
+- How did you test the error path without breaking the app? (moved one fixture temporarily, then restored it)
+
+---
+
+## 39. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

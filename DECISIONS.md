@@ -327,3 +327,11 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: animation is used only for state changes (filter pending, bar widths) and a transform-only page entrance. Opacity is never animated from zero. JavaScript animation honours reduced motion explicitly.
 
 **Why**: this extends #33. A frozen or skipped animation, as in a background tab, print or the preview pane, must leave the page usable. Moving bars show *how* a filter changed the values, which a redraw from zero hides. The global CSS reduced-motion rule looks complete but does not touch rAF-based chart libraries.
+
+---
+
+## 38. One route-level loading and error boundary for the analytics shell
+
+**Decision**: a single `loading.tsx` and `error.tsx` in `app/(dashboard)`, not one per page. Retry is `router.refresh()` plus `reset()`. Production shows a digest, never the error text.
+
+**Why**: every page shares the same structure and data layer, so per-page boundaries would repeat themselves. Server errors need a refetch, and a bare `reset()` silently fails. Next.js redacts server error messages in production for a reason: fixture paths and stack traces are internal. The cost is that a hard load now streams the body behind a boundary; see the Stage 14 trade-off.

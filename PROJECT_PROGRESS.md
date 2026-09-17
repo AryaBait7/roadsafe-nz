@@ -4,7 +4,20 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 13 (Animation + UX polish) — complete.** Next up: Stage 14 (Loading/error/empty states).
+**Stage 14 (Loading/error/empty states) — complete.** Next up: Stage 15 (Consistency + accessibility pass).
+
+### Stage 14 — Loading, error and empty states (done 2026-09-17)
+
+- **Empty states.** Every filtered page was probed with a region that matches nothing. Dashboard, Map Explorer, Hotspots, Risk Factors and Reports already explained themselves. **Crash Trends drew four empty chart shells with no message**; it now shows "No crashes match these filters" with a next step.
+- **`app/(dashboard)/loading.tsx`.** A skeleton shaped like a page (header, five figures, two panels), announced with `role="status"`. It covers the first render of a page; filter changes keep using the Stage 13 pending state.
+- **`app/(dashboard)/error.tsx`.** Failures stay inside the sidebar shell, so navigation keeps working. Development shows the real message; production shows a generic one plus the digest that matches the server log. **"Try again" initially did nothing**: `reset()` only re-renders on the client, and these errors come from the server render. It now runs `router.refresh()` and `reset()` in one transition, and showed the recovered page once the fixture was restored.
+- **Missing fixtures name the right script.** `FixtureMissingError` pointed at `generate_frontend_fixtures.py` even for the dictionary fixture, which comes from `generate_data_dictionary.py`.
+- **`app/not-found.tsx`** is a branded 404 with routes back (verified HTTP 404). **`app/global-error.tsx`** is a last-resort boundary with inline styles only.
+
+**Verified:** the error boundary by temporarily moving `data-dictionary.json` (restored afterwards; all five fixtures present); the 404 page; the Crash Trends empty state; and client navigation between pages. Lint, tsc and build are clean.
+
+**Trade-off noted:** with a route-level Suspense boundary, a hard page load streams the page body and React 19.2 reveals it on an animation frame. In a hidden document (this preview pane, or a background tab until focused) the skeleton stays until the tab is visible. Content still arrives in the initial HTML, and Next.js serves complete HTML to crawlers.
+
 
 ### Stage 13 — Animation + UX polish (done 2026-09-17)
 
@@ -143,8 +156,8 @@ Seven requested changes, all against the existing components — no rebuild.
 | 11 | Data Dictionary | ✅ Complete |
 | 12 | Responsive/mobile | ✅ Complete |
 | 13 | Animation + UX polish | ✅ Complete |
-| 14 | Loading/error/empty states | ⏭️ Next — 🟡 empty states wired on every data page; route-level loading/error boundaries pending |
-| 15 | Consistency + accessibility pass | 🔲 |
+| 14 | Loading/error/empty states | ✅ Complete |
+| 15 | Consistency + accessibility pass | ⏭️ Next |
 | 16 | Frontend testing + performance | 🔲 |
 | 17–21 | Data pipeline, PostGIS, analytics, ML, explainability | 🟡 Pipeline + EDA + features done (see below) |
 | 22 | Node/Express REST API | 🔲 |
@@ -388,7 +401,7 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 14 — loading, error and empty states.** Add route-level `loading.tsx` and `error.tsx`, handle a missing fixture gracefully, and check that every empty state explains what to change.
-2. **Stages 15–16** — consistency and accessibility audit, tests and performance.
+1. **Stage 15 — consistency and accessibility.** Known item: Crash Trends uses `p-6 space-y-4` where other pages use `p-4 space-y-3`. Also audit heading order, landmarks, contrast, keyboard paths (drawer, chart/table toggles, hotspot selection) and focus management.
+2. **Stage 16** — tests and performance.
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
 4. **Open data items before modelling:** drop the two 100%-empty columns (`intersection`, `crashRoadSideRoad`); decide fill-0 vs missing for the 57.3%-missing roadside-object block; investigate the grid cell at [-47.5, 179.0] tagged region "Unknown".

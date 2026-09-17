@@ -1,7 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
-Reflects the implementation as of Stage 13 (2026-09-17).
+Reflects the implementation as of Stage 14 (2026-09-17).
 
 ## Target architecture
 
@@ -208,6 +208,8 @@ is approached once. A phase machine drives the ~6.6s sequence; it plays on
 every visit to `/`, is skippable and replayable, and reduced-motion users get
 the final state before first paint. Below 1280px the sign becomes an overhead gantry (CSS variables on `.road-sign-layout`) and the stage is scaled 0.64/0.82 on phones and small tablets, so the sign stays on screen through the end of the intro. Motion blur is a flat layer outside the 3D
 context because `filter` would flatten it.
+
+**Loading and failure.** `app/(dashboard)/loading.tsx` is the Suspense fallback for a page's first render. `error.tsx` catches page and service failures inside the shell; its retry refreshes server data before resetting. `app/not-found.tsx` and `app/global-error.tsx` cover unknown routes and root-layout failures. Every filtered page renders an explanatory empty state when nothing matches.
 
 **Motion.** Filter navigation runs in a React transition, which drives the "Updating…" state. Bar widths transition in place because rows are keyed by label. `app/(dashboard)/template.tsx` gives a transform-only entrance per page. JavaScript-driven animation (Recharts) checks `usePrefersReducedMotion`; CSS animation is covered by the global reduced-motion rule.
 
