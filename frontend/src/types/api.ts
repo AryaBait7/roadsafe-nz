@@ -226,22 +226,68 @@ export interface MapCrashPoint {
 }
 
 /** GET /api/ml/metrics — placeholder until a model is trained in Stage 19. */
-export interface ModelMetrics {
-  modelName: string;
+/** One candidate's scores on the validation years. */
+export interface ModelComparisonRow {
+  model: string;
+  fitSeconds: number;
+  threshold: number;
   precision: number;
   recall: number;
   f1: number;
   rocAuc: number;
   prAuc: number;
-  confusionMatrix: {
-    trueNegative: number;
-    falsePositive: number;
-    falseNegative: number;
-    truePositive: number;
-  };
-  /** Chronological split boundaries, e.g. trainYears [2006, 2021]. */
+  accuracy: number;
+  confusionMatrix: ConfusionMatrix;
+}
+
+/** Predicted probability against what actually happened, for one bin. */
+export interface CalibrationBin {
+  predicted: number;
+  observed: number;
+  crashes: number;
+}
+
+export interface ConfusionMatrix {
+  trueNegative: number;
+  falsePositive: number;
+  falseNegative: number;
+  truePositive: number;
+}
+
+/**
+ * GET /api/ml/metrics — the trained model's scores on the held-out test
+ * years, plus everything needed to read them honestly: what it was compared
+ * against, how the threshold was chosen, and whether its probabilities mean
+ * anything.
+ */
+export interface ModelMetrics {
+  modelName: string;
+  trainedAt: string;
+  precision: number;
+  recall: number;
+  f1: number;
+  rocAuc: number;
+  prAuc: number;
+  accuracy: number;
+  confusionMatrix: ConfusionMatrix;
+  /** Probability above which a crash is flagged severe. */
+  threshold: number;
+  thresholdRule: string;
   trainYears: [number, number];
+  validationYears: [number, number];
   testYears: [number, number];
+  trainRows: number;
+  testRows: number;
+  /** Share of test crashes that were actually severe. */
+  testPrevalence: number;
+  /** What trivial strategies score, so the model's figures have a floor. */
+  references: {
+    alwaysNotSevereAccuracy: number;
+    randomPrAuc: number;
+  };
+  comparison: ModelComparisonRow[];
+  calibration: CalibrationBin[];
+  features: string[];
 }
 
 /** One chronological slice of the planned training data. */
@@ -276,10 +322,18 @@ export interface TrainingDataProfile {
   leakageExcluded: { name: string; reason: string }[];
 }
 
-/** GET /api/ml/feature-importance — placeholder until Stage 19/20. */
+/** GET /api/ml/feature-importance */
 export interface FeatureImportanceItem {
   feature: string;
+  /** Mean drop in PR-AUC when this input is shuffled. */
   importance: number;
+  standardDeviation: number;
+}
+
+export interface FeatureImportanceReport {
+  model: string;
+  method: string;
+  items: FeatureImportanceItem[];
 }
 
 /** Available options for the sidebar filters, derived from the dataset. */

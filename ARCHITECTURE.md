@@ -1,7 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
-Reflects the implementation as of Stage 19 (2026-09-18).
+Reflects the implementation as of Stage 20 (2026-09-18).
 
 ## Target architecture
 
@@ -34,7 +34,7 @@ order — see [DECISIONS.md](DECISIONS.md) #10 and #21.
 | Data source | PostgreSQL/PostGIS via Express | Pre-aggregated JSON fixtures on disk, generated from the real CAS data |
 | Aggregation | SQL `GROUP BY` in the database | In-memory group-by over a cube (`services/dev/crashCube.ts`) |
 | Transport | HTTP to Express | Direct function call from Server Components |
-| ML metrics | Trained model + SHAP | Return `null` with `meta.source: "placeholder"` |
+| ML metrics | Trained model + SHAP | XGBoost trained by `train_model.py`; metrics and permutation importance shipped as fixtures. SHAP is Stage 21 |
 | ML training-data facts | Served by the API | Real, computed from the cube (`getTrainingDataProfile`) |
 | Exports | Server-side report generation | CSV built in the browser from rendered rows; print-to-PDF |
 | Hosting | AWS | `next dev` on `localhost:3100` only — nothing deployed |
@@ -79,7 +79,7 @@ fixture shape *is* the API contract.
 | analyticsService | `getContributingFactors`, `getSeverityLift`, `getBaselineSevereRate`, `getHotspots`, `getHotspotDetail` | `/api/crashes/factors`, `/api/risk-factors`, `/api/hotspots[/{id}]` |
 | datasetService | `getDataDictionary` | `/api/dataset/dictionary` |
 | analyticsService | `getAdjustedAssociations` (whole dataset, not filtered) | `/api/risk-factors/adjusted` |
-| mlService | `getModelMetrics`, `getFeatureImportance` (null until Stage 20), `getTrainingDataProfile` (real) | `/api/ml/*` |
+| mlService | `getModelMetrics`, `getFeatureImportance` (measured; null if the fixture is absent), `getTrainingDataProfile` | `/api/ml/*` |
 
 `getSummaryComparison` returns the selected period and the equivalent
 preceding period, only when a year range is chosen. `getSeverityLift`
@@ -103,6 +103,9 @@ cas_crash_data_features.csv (82 columns, gitignored)
    |  validate features
    |  generate_frontend_fixtures.py (+ generate_data_dictionary.py, which reads DATA_DICTIONARY.md)
    |  analyze_associations.py       logistic regression: crude + adjusted odds ratios
+   |  train_model.py (--train)      chronological split, 4 candidates, one test scoring
+   |                                -> model-metrics.json, feature-importance.json,
+   |                                   models/severity_model.joblib (gitignored)
 frontend/src/data/fixtures/*.json (~7.4MB, committed; rewritten only when data changes)
    |  pipeline_run.json             snapshot sha256 + content fingerprint + step timings (committed)
    |  loadFixture() + services/dev/crashCube.ts

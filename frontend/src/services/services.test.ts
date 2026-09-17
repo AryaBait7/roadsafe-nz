@@ -13,7 +13,11 @@ import {
   getSeverityLift,
   getUnattributedCrashCount,
 } from "./analyticsService";
-import { getModelMetrics, getTrainingDataProfile } from "./mlService";
+import {
+  getFeatureImportance,
+  getModelMetrics,
+  getTrainingDataProfile,
+} from "./mlService";
 import { getDataDictionary } from "./datasetService";
 
 /**
@@ -120,11 +124,66 @@ describe("analytics", () => {
   });
 });
 
-describe("ML honesty", () => {
-  it("returns no metrics until a model exists", async () => {
+describe("the trained model", () => {
+  it("reports measured test-year scores, not placeholders", async () => {
     const { data, meta } = await getModelMetrics();
-    expect(data).toBeNull();
-    expect(meta.source).toBe("placeholder");
+    expect(meta.source).toBe("real");
+    expect(data).not.toBeNull();
+
+    const model = data!;
+    expect(model.modelName).toBe("XGBoost");
+    // Scored once on 2022-2025, which the model never saw.
+    expect(model.testYears).toEqual([2022, 2025]);
+    expect(model.trainYears).toEqual([2006, 2019]);
+    expect(model.testRows).toBe(121_114);
+
+    // The headline claim: better than ranking at random, and honest about it.
+    expect(model.prAuc).toBeGreaterThan(model.references.randomPrAuc * 1.5);
+    expect(model.prAuc).toBeLessThan(0.5);
+    expect(model.rocAuc).toBeGreaterThan(0.6);
+
+    // The confusion matrix must add up to the test rows, and agree with
+    // the reported precision and recall.
+    const c = model.confusionMatrix;
+    expect(
+      c.truePositive + c.trueNegative + c.falsePositive + c.falseNegative,
+    ).toBe(model.testRows);
+    expect(c.truePositive / (c.truePositive + c.falsePositive)).toBeCloseTo(
+      model.precision,
+      6,
+    );
+    expect(c.truePositive / (c.truePositive + c.falseNegative)).toBeCloseTo(
+      model.recall,
+      6,
+    );
+  });
+
+  it("beats every other candidate it was compared against", async () => {
+    const { data } = await getModelMetrics();
+    const model = data!;
+    const others = model.comparison.filter(
+      (row) => row.model !== model.modelName,
+    );
+
+    expect(others.length).toBeGreaterThan(0);
+    const chosen = model.comparison.find(
+      (row) => row.model === model.modelName,
+    )!;
+    for (const row of others) {
+      expect(chosen.prAuc).toBeGreaterThanOrEqual(row.prAuc);
+    }
+    // The trivial reference has no ranking ability at all.
+    const dummy = model.comparison.find((r) => r.model.startsWith("Always"))!;
+    expect(dummy.rocAuc).toBeCloseTo(0.5, 3);
+  });
+
+  it("ranks features by measured permutation importance", async () => {
+    const { data, meta } = await getFeatureImportance();
+    expect(meta.source).toBe("real");
+    expect(data!.items.length).toBeGreaterThan(3);
+    const values = data!.items.map((i) => i.importance);
+    expect([...values].sort((a, b) => b - a)).toEqual(values);
+    expect(values.every((v) => v > 0)).toBe(true);
   });
 
   it("splits chronologically on real counts and holds out the partial year", async () => {

@@ -56,6 +56,11 @@ class Timer:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the RoadSafe NZ data pipeline.")
     parser.add_argument("--refresh", action="store_true", help="download the latest CAS export first")
+    parser.add_argument(
+        "--train",
+        action="store_true",
+        help="also retrain the severity model (several minutes)",
+    )
     args = parser.parse_args()
     timer = Timer()
 
@@ -95,6 +100,14 @@ def main() -> None:
 
     with timer.step("adjusted associations"):
         analyze_associations.main()
+
+    # Off by default: training takes minutes, and the data it consumes has
+    # not changed unless a refresh brought in new crashes.
+    if args.train:
+        with timer.step("train severity model"):
+            import train_model
+
+            train_model.main()
 
     record = {
         "completedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),

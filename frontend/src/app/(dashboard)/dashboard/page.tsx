@@ -35,7 +35,7 @@ import {
   getTrends,
 } from "@/services/crashService";
 import { getContributingFactors } from "@/services/analyticsService";
-import { getFeatureImportance } from "@/services/mlService";
+import { getFeatureImportance, getModelMetrics } from "@/services/mlService";
 
 export const metadata = { title: "Dashboard" };
 
@@ -56,6 +56,7 @@ export default async function DashboardPage({
     trends,
     options,
     importance,
+    modelMetrics,
     mapPoints,
     gridDegrees,
     unmapped,
@@ -68,6 +69,7 @@ export default async function DashboardPage({
     getTrends(filters),
     getFilterOptions(),
     getFeatureImportance(),
+    getModelMetrics(),
     getMapPoints(filters),
     getMapGridDegrees(),
     getUnmappedCrashCount(filters),
@@ -357,8 +359,10 @@ export default async function DashboardPage({
             className="xl:col-span-4"
             title="ML model insight"
             description="Factors associated with serious and fatal crashes."
-            isPlaceholder={importance.meta.source === "placeholder"}
-            chart={<ModelPreview importance={importance} />}
+            isPlaceholder={modelMetrics.meta.source === "placeholder"}
+            chart={
+              <ModelPreview importance={importance} metrics={modelMetrics} />
+            }
           />
 
           <Card className="flex flex-col xl:col-span-3">
@@ -367,7 +371,7 @@ export default async function DashboardPage({
             </CardHeader>
             <CardBody className="flex flex-1 flex-col justify-between gap-3">
               <p className="text-[11px] leading-relaxed text-surface-500">
-                Once trained, the classifier will estimate how severe a crash is
+                The classifier estimates how severe a crash is
                 likely to be <em>given that a crash occurred</em>. It cannot
                 predict whether a crash will happen: this dataset contains only
                 crashes, so it holds no examples of roads where nothing went

@@ -913,7 +913,23 @@ Two runs gave the same fingerprint and changed no fixture.
 
 ---
 
-## 43. Verifying work instead of assuming it
+## 43. Training a model on imbalanced data, and reading its scores honestly
+
+**What**: XGBoost beat a random forest, a logistic regression and a trivial baseline on validation PR-AUC, then was scored once on unseen years: PR-AUC 0.152 against 0.078 for random ranking, recall 0.425, precision 0.150. The calibration table showed predictions averaging 7.1% where 7.8% occurred, because the severe rate rose between the training and test years.
+
+**Why it matters**: the interesting part is not the algorithm, it is the evaluation. A chronological split, one scoring of the test set, PR-AUC instead of accuracy, and a calibration check turned "the model is weak" into "the model ranks about twice as well as chance, under-calls a shifting base rate, and is limited by what CAS records".
+
+**Interview questions**
+- Why is accuracy a bad headline metric at 7% positives? What does PR-AUC measure instead?
+- What is the difference between validation and test data, and what breaks if you pick a threshold on test?
+- What is calibration, and how can a model rank well but be badly calibrated?
+- Why does class reweighting hurt calibration, and when would you accept that trade?
+- Why permutation importance rather than a tree's built-in importances?
+- Your model has PR-AUC 0.152. Is it useful? (Depends on the decision it supports: at this threshold it finds 43% of severe crashes while flagging 23% of all crashes.)
+
+---
+
+## 44. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

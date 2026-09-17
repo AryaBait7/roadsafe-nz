@@ -1,9 +1,10 @@
 import { getTrends } from "./crashService";
 import { getFilterOptions } from "./dashboardService";
+import { loadFixture } from "./fixtures";
 import type {
   ApiResponse,
   DatasetSplit,
-  FeatureImportanceItem,
+  FeatureImportanceReport,
   ModelMetrics,
   TrainingDataProfile,
 } from "@/types";
@@ -11,32 +12,51 @@ import type {
 /**
  * Crash-severity model performance and explainability.
  *
- * No model has been trained yet — that is Stage 20. The metric endpoints
- * return `null` rather than invented numbers: a reader cannot tell a
- * placeholder 0.81 precision from a measured one, and a screenshot of that in
- * a portfolio would be a false claim about a model that does not exist.
+ * The model is trained by `data-pipeline/src/train_model.py`, which writes
+ * these fixtures. Until Stage 20 they returned null rather than invented
+ * numbers; the same rule still applies, so a missing fixture surfaces as
+ * "no model" instead of a plausible-looking score.
+ *
+ * Not filter-aware: the model is trained once on the full dataset, and its
+ * scores belong to the held-out test years, not to whatever the sidebar is
+ * showing.
  */
-const AWAITING_MODEL = {
+async function loadModelFixture<T>(name: string): Promise<ApiResponse<T> | null> {
+  try {
+    return await loadFixture<ApiResponse<T>>(name);
+  } catch (error) {
+    if ((error as Error).name === "FixtureMissingError") return null;
+    throw error;
+  }
+}
+
+const NO_MODEL = {
   source: "placeholder",
   note:
-    "No model has been trained yet (Stage 20). No figures are shown because " +
-    "fabricated metrics cannot be distinguished from measured ones.",
+    "No trained model is available. Run train_model.py in data-pipeline/ to " +
+    "produce it. No figures are shown because fabricated metrics cannot be " +
+    "distinguished from measured ones.",
 } as const;
 
 export async function getModelMetrics(): Promise<
   ApiResponse<ModelMetrics | null>
 > {
-  return { data: null, meta: { ...AWAITING_MODEL } };
+  const fixture = await loadModelFixture<ModelMetrics>("model-metrics");
+  return fixture ?? { data: null, meta: { ...NO_MODEL } };
 }
 
 export async function getFeatureImportance(): Promise<
-  ApiResponse<FeatureImportanceItem[] | null>
+  ApiResponse<FeatureImportanceReport | null>
 > {
-  return { data: null, meta: { ...AWAITING_MODEL } };
+  const fixture = await loadModelFixture<FeatureImportanceReport>(
+    "feature-importance",
+  );
+  return fixture ?? { data: null, meta: { ...NO_MODEL } };
 }
 
 /**
- * The planned chronological split. Training on the past and testing on the
+ * The chronological split the model was trained on. Training on the past and
+ * testing on the
  * most recent complete years mirrors how the model would actually be used,
  * and the severe rate rose after 2021 — a random split would leak that shift
  * into training and flatter the test score.
@@ -120,7 +140,7 @@ export async function getTrainingDataProfile(): Promise<
     },
     meta: {
       source: "real",
-      note: "Dataset facts and the planned split. No model has been trained.",
+      note: "Dataset facts and the split the model was trained on.",
     },
   };
 }

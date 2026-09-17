@@ -399,3 +399,27 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: one logistic regression with every condition entered together, computed in the pipeline and shipped as a fixture. It is not filter-aware, and the page says the filters do not apply to it.
 
 **Why**: crude comparisons cannot separate a condition from the conditions it travels with — unsealed roads are mostly rural and fast, and adjusting drops their odds ratio from 1.95 to 1.11. Refitting per filter would mean a different model per view, with estimates that cannot be compared and no way to state the sample it was fitted on. It stays clearly separated from Stage 20's prediction model: this one is for explanation, is never evaluated on held-out data, and claims association only.
+
+---
+
+## 47. The test years are scored once, after the model and threshold are fixed
+
+**Decision**: candidates are compared on 2020–2021 and the decision threshold is chosen there. The 2022–2025 years are scored once, for the already-chosen model. PR-AUC is the headline metric; accuracy is reported only next to the "always predict not severe" reference.
+
+**Why**: choosing anything by test performance turns the test set into a second validation set, and the reported figures stop meaning what they claim. With ~7% positives, accuracy rewards a model that predicts nothing: 92.2% by always saying "not severe", against the model's 76.7%. PR-AUC is the metric that tracks finding rare positives.
+
+---
+
+## 48. No class reweighting; tune the threshold instead
+
+**Decision**: models are fitted without class weights or resampling. The imbalance is handled by choosing the decision threshold on validation, and a calibration table is published.
+
+**Why**: reweighting distorts predicted probabilities, so a "20% chance" stops meaning one in five — and the scenario explorer planned for this model is meant to report probabilities. Thresholding changes only where the line is drawn. Publishing calibration makes the claim checkable, and it immediately exposed the model under-calling the test years because severity rose over time.
+
+---
+
+## 49. Object-struck columns are not model inputs
+
+**Decision**: the object block (and `object_involved`) is excluded from the model's features, though it is kept in the data.
+
+**Why**: what a vehicle hit is recorded as part of the crash description, and hitting a tree or dropping over a bank partly *is* how a crash became severe. It is not leakage in the strict sense of the target's own definition, but it is close enough to the outcome that including it would flatter the model without making it more useful. Speed environment, road type and light are known about a road before anything happens.

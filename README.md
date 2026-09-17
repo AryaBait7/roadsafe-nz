@@ -3,9 +3,9 @@
 Road crash intelligence for New Zealand, built on Waka Kotahi's Crash
 Analysis System (CAS) open data: 705,609 reported crashes, 2006–2026. It
 covers where crashes happen, how severity has changed, and which conditions
-are *associated with* serious outcomes. A crash-severity model is planned
-(Stage 20) and is not trained yet; the app says so rather than showing
-invented metrics.
+are *associated with* serious outcomes. A crash-severity model (XGBoost) is
+trained and evaluated on held-out years; every figure shown is measured, and
+the app states the model's limits rather than overselling it.
 
 ## Status
 
@@ -13,7 +13,12 @@ invented metrics.
   risk factors, ML insights, reports, data dictionary), all backed by real
   aggregates of the CAS data.
 - **Data pipeline: reproducible** from a pinned download (Stage 17).
-- **Planned:** database, ML, API and AWS (Stages 18–27).
+- **Analytics (Stage 19):** confidence intervals, small-area shrinkage, and
+  crude vs adjusted associations.
+- **Model (Stage 20):** XGBoost, PR-AUC 0.152 on 2022–2025 against 0.078 for
+  random ranking.
+- **Blocked:** PostgreSQL + PostGIS (Stage 18) — Docker will not start here.
+- **Planned:** explainability, API and AWS (Stages 21–27).
 
 Details: [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) · design:
 [ARCHITECTURE.md](ARCHITECTURE.md) · reasoning: [DECISIONS.md](DECISIONS.md) ·
@@ -26,7 +31,7 @@ columns: [DATA_DICTIONARY.md](DATA_DICTIONARY.md)
 | Data pipeline | Python, pandas, pyproj, pytest | Built |
 | Frontend | Next.js 16, React 19, TypeScript, Tailwind v4, Recharts, Leaflet, Vitest | Built |
 | Database | PostgreSQL + PostGIS | Planned |
-| ML | scikit-learn, XGBoost, SHAP | Planned |
+| Analytics + ML | pandas, statsmodels, scikit-learn, XGBoost | Built (SHAP planned) |
 | API | Node.js / Express | Planned |
 | Cloud | AWS (S3, RDS, Amplify, Secrets Manager, CloudWatch), GitHub Actions | Planned |
 
@@ -77,9 +82,9 @@ npm test
 
 1–16. ✅ Frontend: shell, every page, responsive, motion, states, accessibility, tests
 17. ✅ Reproducible CAS pipeline
-18. 🔲 PostgreSQL + PostGIS
-19. 🔲 Analytics layer in SQL
-20. 🔲 Severity model (baseline → logistic regression → random forest → XGBoost)
+18. ⏸️ PostgreSQL + PostGIS — blocked, Docker will not start
+19. ✅ Analytics layer
+20. ✅ Severity model (baseline → logistic regression → random forest → XGBoost)
 21. 🔲 Explainability (SHAP)
 22. 🔲 Node/Express REST API
 23. 🔲 Connect frontend to the API

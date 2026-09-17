@@ -4,7 +4,36 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 19 (Analytics layer) — complete. Stage 18 (PostgreSQL + PostGIS) — paused, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+**Stage 20 (Severity model) — complete. Stage 18 (PostgreSQL + PostGIS) — paused, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+
+### Stage 20 — Severity model (done 2026-09-18)
+
+`train_model.py` trains and evaluates the model the ML Insights page had been describing. **Every placeholder on that page is now a measured number.**
+
+**Method.** Chronological split — train 2006–2019 (502,946 rows, 6.41% severe), validate 2020–2021 (66,976, 6.63%), test 2022–2025 (121,114, 7.83%), partial year excluded. Candidates were compared on validation; **the test years were scored once**, with the model and threshold already fixed. No class reweighting: the imbalance is handled by choosing the threshold on validation, which keeps the probabilities meaningful.
+
+**Validation results (PR-AUC, the headline because positives are ~7%):**
+
+| Model | PR-AUC | ROC-AUC | Fit |
+|---|---|---|---|
+| Always predict "not severe" | 0.066 | 0.500 | 0s |
+| Logistic regression | 0.108 | 0.651 | 7s |
+| Random forest | 0.130 | 0.680 | 117s |
+| **XGBoost (chosen)** | **0.135** | **0.689** | 43s |
+
+**Test years, scored once:** PR-AUC **0.152** against **0.078** for random ranking (1.9×), ROC-AUC 0.675, recall 0.425, precision 0.150, F1 0.222, at a threshold of 0.108. It finds 4,034 of 9,486 severe crashes and wrongly flags 22,813. Accuracy is 76.7% against 92.2% for always predicting "not severe", which is exactly why accuracy is not the headline.
+
+**This is a modest model, and the page says so.** Severity given a crash turns mostly on impact specifics CAS does not record — speeds, angles, restraint use, occupant age.
+
+**The calibration table found something.** Mean predicted 7.1% against 7.8% observed, with the gap widest in the safest-looking bins. The cause is real drift: the severe rate rose from 6.4% in the training years to 7.8% in the test years, so a model fitted on the past under-calls the present. **A random split would have hidden this** — which is the argument for the chronological split, now demonstrated rather than asserted.
+
+**Feature importance** is permutation importance on validation, scored by PR-AUC (model-agnostic, measured on data the model was not fitted to, unlike a tree's split counts). Speed environment leads, then vehicles involved and road type. SHAP, which adds direction, is Stage 21.
+
+**Excluded from the inputs:** casualty counts and `crashSeverity` (they define the target), `OBJECTID`, and the object-struck block — what a vehicle hit is partly how the crash ended, so it sits too close to the outcome.
+
+**Wiring:** `mlService` serves the two new fixtures and still returns null with a placeholder badge if they are missing; the dashboard card and ML Insights page render measured values, a candidate comparison and the calibration table. The model artefact is saved to `data-pipeline/models/` (gitignored). `run_pipeline.py --train` retrains.
+
+**Tests:** 43 frontend (3 rewritten: they now assert measured scores, that the confusion matrix reconciles with precision and recall, and that the chosen model beat the others) and 25 pipeline tests. A new unit test caught a real bug: `calibration()` silently returned no rows when every prediction was identical.
 
 ### Stage 19 — Analytics layer (done 2026-09-18)
 
@@ -377,7 +406,8 @@ Seven requested changes, all against the existing components — no rebuild.
 | 17 | Reproducible CAS pipeline | ✅ Complete |
 | 18 | PostgreSQL + PostGIS | 🟡 In progress: schema and loader written, untested (Docker down) |
 | 19 | Analytics layer | ✅ Complete |
-| 20–21 | ML, explainability | ⏭️ Next |
+| 20 | Severity model | ✅ Complete |
+| 21 | Explainability (SHAP) | ⏭️ Next |
 | 22 | Node/Express REST API | 🔲 |
 | 23 | Connect frontend to real API | 🔲 |
 | 24–27 | AWS, CI/CD, testing, portfolio docs | 🔲 |
@@ -619,7 +649,7 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 20 — severity model.** Baseline → logistic regression → random forest → XGBoost, on the chronological split, evaluated on the metrics the ML Insights page already lists. The Stage 19 regression is the inferential starting point, not the predictive model.
+1. **Stage 21 — explainability.** SHAP values for the trained XGBoost model, giving each feature's signed push toward or away from a severe prediction, plus the scenario explorer the ML page still marks as a placeholder.
 2. **Stage 18 — PostgreSQL + PostGIS** remains blocked on Docker; see that section for options and resume steps.
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
 4. **Data items resolved in Stage 17.** Remaining for Stage 20: decide whether `object_involved` becomes a model feature, since it is known at report time but describes the crash itself.

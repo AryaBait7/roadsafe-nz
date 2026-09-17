@@ -169,7 +169,7 @@ export default async function ReportsPage({
       title: "Model evaluation report",
       description:
         "Metrics, confusion matrix and SHAP explanations for the severity model.",
-      needs: "A trained model (Stage 20).",
+      needs: "Server-side report generation (Stage 22); the model itself is trained.",
     },
     {
       title: "Scheduled summaries",
