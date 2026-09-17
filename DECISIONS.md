@@ -423,3 +423,19 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: the object block (and `object_involved`) is excluded from the model's features, though it is kept in the data.
 
 **Why**: what a vehicle hit is recorded as part of the crash description, and hitting a tree or dropping over a bank partly *is* how a crash became severe. It is not leakage in the strict sense of the target's own definition, but it is close enough to the outcome that including it would flatter the model without making it more useful. Speed environment, road type and light are known about a road before anything happens.
+
+---
+
+## 50. Score every scenario in the pipeline, and publish its support
+
+**Decision**: the scenario explorer reads a precomputed grid of all 512 combinations rather than calling a model at request time. Each scenario carries the number of matching training crashes and their observed severe rate, and the page warns when that count is below 100.
+
+**Why**: two problems, one answer. There is no server to host the model yet, and a browser-side approximation would no longer be the model's output. Precomputing keeps the figures exact. The support count exists because a model answers *any* question put to it: "unsealed state highway in Auckland" has 34 matching crashes, and the prediction there disagreed with every other view on the site. 385 of 512 combinations are that thin. Showing the count turns a confident-looking number into an honest one.
+
+---
+
+## 51. SHAP is reported as the model's reasoning, not the road's behaviour
+
+**Decision**: SHAP panels state that they explain the model, and the page calls out that the largest pushes in both directions come from "Unknown" levels.
+
+**Why**: SHAP is frequently read as causal evidence. Here it is a faithful description of a model that has partly learned CAS's recording habits — an unrecorded light condition pushes hard away from "severe" because such records are overwhelmingly non-injury crashes. Presenting that as a finding about darkness would be wrong twice over. It is disclosed, and noted as the first thing to fix in a refit.

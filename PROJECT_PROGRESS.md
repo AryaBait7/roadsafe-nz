@@ -4,7 +4,30 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 20 (Severity model) — complete. Stage 18 (PostgreSQL + PostGIS) — paused, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+**Stage 21 (Explainability) — complete. Stage 18 (PostgreSQL + PostGIS) — paused, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+
+### Stage 21 — Explainability (done 2026-09-18)
+
+`explain_model.py` produces two things from the trained model: SHAP values, and a scenario grid. The ML Insights page has **no placeholders left**.
+
+**SHAP (TreeSHAP, 20,000 test crashes, log-odds).** Permutation importance says how much an input matters; SHAP adds direction and size, and is additive — the pushes for one crash sum to its prediction minus the average.
+
+| Input | Mean \|SHAP\| |
+|---|---|
+| Speed environment | 0.401 |
+| Region | 0.357 |
+| Vehicles involved | 0.273 |
+| Light | 0.160 |
+
+**The strongest pushes in both directions are missing-data levels**, and the page says so rather than presenting them as findings: an unrecorded light condition pushes **−1.49** (away from severe) and an unrecorded speed limit **+0.68**. The model has partly learned how CAS records get completed — the same artefact the Risk Factors page excludes. Removing those levels is the first thing to try next.
+
+**Three real test crashes** are shown with the pushes that moved each prediction, so an explanation is arithmetic rather than a story told afterwards.
+
+**Scenario explorer, now working.** All 512 combinations of six conditions are scored by the model in the pipeline, so the page does a lookup and shows the model's own output rather than an approximation — no model runtime in the browser. The other inputs are held at their most common training value, which the page lists.
+
+**A test caught the thing that makes scenario explorers dishonest.** Comparing "fast, dark, unsealed, hilly state highway" with "slow, sunny, sealed, flat urban" returned **2.8% against 4.5%** — backwards. One-at-a-time effects were all sensible (speed, hill and dark each raise the estimate), so the cause was the combination: **only 34 training crashes match it**, and the model was extrapolating into an empty corner. Each scenario now carries its training support and observed severe rate, **385 of 512 combinations are flagged as thin**, and the explorer warns instead of presenting extrapolation as evidence. On a well-supported scenario the model reads 12.7% against 13.8% observed across 138 matching crashes.
+
+**Tests:** 48 frontend (5 new) and 25 pipeline. The scenario comparison test now asserts support before comparing probabilities, so it cannot pass on extrapolated corners.
 
 ### Stage 20 — Severity model (done 2026-09-18)
 
@@ -407,7 +430,8 @@ Seven requested changes, all against the existing components — no rebuild.
 | 18 | PostgreSQL + PostGIS | 🟡 In progress: schema and loader written, untested (Docker down) |
 | 19 | Analytics layer | ✅ Complete |
 | 20 | Severity model | ✅ Complete |
-| 21 | Explainability (SHAP) | ⏭️ Next |
+| 21 | Explainability (SHAP) | ✅ Complete |
+| 22 | Node/Express REST API | ⏭️ Next |
 | 22 | Node/Express REST API | 🔲 |
 | 23 | Connect frontend to real API | 🔲 |
 | 24–27 | AWS, CI/CD, testing, portfolio docs | 🔲 |
@@ -649,7 +673,8 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 21 — explainability.** SHAP values for the trained XGBoost model, giving each feature's signed push toward or away from a severe prediction, plus the scenario explorer the ML page still marks as a placeholder.
+1. **Stage 22 — Node/Express REST API.** Serve what the services already define (`ApiResponse<T>` shapes), then Stage 23 points the frontend at it. The API can read the fixtures until Stage 18's database is unblocked.
+2. **Worth doing to the model:** refit without the "Unknown" levels, which SHAP shows it leaning on.
 2. **Stage 18 — PostgreSQL + PostGIS** remains blocked on Docker; see that section for options and resume steps.
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
 4. **Data items resolved in Stage 17.** Remaining for Stage 20: decide whether `object_involved` becomes a model feature, since it is known at report time but describes the crash itself.

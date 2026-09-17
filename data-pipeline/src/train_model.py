@@ -260,7 +260,15 @@ def feature_labels(pipeline: Pipeline) -> list[str]:
     for name in names:
         section, _, rest = name.partition("__")
         if section == "categorical":
-            column, _, level = rest.partition("_")
+            # Match the longest known column name first: several inputs
+            # contain underscores, so splitting on the first one mislabels
+            # them ("speed: limit_binned_Unknown").
+            column = next(
+                (c for c in sorted(CATEGORICAL, key=len, reverse=True)
+                 if rest.startswith(f"{c}_")),
+                rest,
+            )
+            level = rest[len(column) + 1:] if column != rest else rest
             pretty.append(f"{CATEGORICAL.get(column, column)}: {level}")
         elif section == "numeric":
             pretty.append(NUMERIC.get(rest, rest))

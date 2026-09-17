@@ -17,6 +17,8 @@ the app states the model's limits rather than overselling it.
   crude vs adjusted associations.
 - **Model (Stage 20):** XGBoost, PR-AUC 0.152 on 2022–2025 against 0.078 for
   random ranking.
+- **Explainability (Stage 21):** SHAP contributions and a scenario explorer
+  that shows how much evidence each combination actually has.
 - **Blocked:** PostgreSQL + PostGIS (Stage 18) — Docker will not start here.
 - **Planned:** explainability, API and AWS (Stages 21–27).
 
@@ -31,7 +33,7 @@ columns: [DATA_DICTIONARY.md](DATA_DICTIONARY.md)
 | Data pipeline | Python, pandas, pyproj, pytest | Built |
 | Frontend | Next.js 16, React 19, TypeScript, Tailwind v4, Recharts, Leaflet, Vitest | Built |
 | Database | PostgreSQL + PostGIS | Planned |
-| Analytics + ML | pandas, statsmodels, scikit-learn, XGBoost | Built (SHAP planned) |
+| Analytics + ML | pandas, statsmodels, scikit-learn, XGBoost, SHAP | Built |
 | API | Node.js / Express | Planned |
 | Cloud | AWS (S3, RDS, Amplify, Secrets Manager, CloudWatch), GitHub Actions | Planned |
 
@@ -85,7 +87,7 @@ npm test
 18. ⏸️ PostgreSQL + PostGIS — blocked, Docker will not start
 19. ✅ Analytics layer
 20. ✅ Severity model (baseline → logistic regression → random forest → XGBoost)
-21. 🔲 Explainability (SHAP)
+21. ✅ Explainability (SHAP)
 22. 🔲 Node/Express REST API
 23. 🔲 Connect frontend to the API
 24–26. 🔲 AWS deployment, CI/CD, security, monitoring, final testing

@@ -16,6 +16,8 @@ import {
 import {
   getFeatureImportance,
   getModelMetrics,
+  getScenarios,
+  getShapSummary,
   getTrainingDataProfile,
 } from "./mlService";
 import { getDataDictionary } from "./datasetService";
@@ -282,6 +284,103 @@ describe("uncertainty and adjustment (Stage 19)", () => {
       expect(term.adjusted.interval[1]).toBeGreaterThanOrEqual(
         term.adjusted.oddsRatio,
       );
+    }
+  });
+});
+
+describe("explainability (Stage 21)", () => {
+  it("summarises SHAP by input and by level", async () => {
+    const { data, meta } = await getShapSummary();
+    expect(meta.source).toBe("real");
+
+    const shap = data!;
+    expect(shap.sampleRows).toBe(20_000);
+    expect(shap.testYears).toEqual([2022, 2025]);
+
+    // Inputs are ranked by size of push, direction ignored.
+    const sizes = shap.features.map((f) => f.meanAbsoluteShap);
+    expect([...sizes].sort((a, b) => b - a)).toEqual(sizes);
+    expect(shap.features[0].feature).toBe("Speed environment");
+
+    // Levels run from the strongest push towards severe to the strongest away.
+    const pushes = shap.levels.map((l) => l.meanShap);
+    expect([...pushes].sort((a, b) => b - a)).toEqual(pushes);
+    expect(pushes[0]).toBeGreaterThan(0);
+    expect(pushes.at(-1)).toBeLessThan(0);
+  });
+
+  it("explains real crashes with contributions that name a level", async () => {
+    const { data } = await getShapSummary();
+
+    for (const example of data!.examples) {
+      expect(example.probability).toBeGreaterThan(0);
+      expect(example.probability).toBeLessThan(1);
+      expect(example.contributions.length).toBeGreaterThan(0);
+      expect(Object.keys(example.conditions)).toContain("Speed environment");
+    }
+
+    const [lowest, , highest] = data!.examples;
+    expect(highest.probability).toBeGreaterThan(lowest.probability);
+  });
+
+  it("scores every combination the explorer offers", async () => {
+    const { data, meta } = await getScenarios();
+    expect(meta.source).toBe("real");
+
+    const grid = data!;
+    const combinations = grid.dimensions.reduce(
+      (total, dimension) => total * dimension.options.length,
+      1,
+    );
+    expect(grid.scenarios).toHaveLength(combinations);
+    expect(new Set(grid.scenarios.map((s) => s.key)).size).toBe(combinations);
+    expect(grid.heldFixed.length).toBeGreaterThan(0);
+
+    for (const scenario of grid.scenarios) {
+      expect(scenario.probability).toBeGreaterThan(0);
+      expect(scenario.probability).toBeLessThan(1);
+    }
+  });
+
+  it("predicts a worse outcome on a fast open road than a slow urban one", async () => {
+    const { data } = await getScenarios();
+    const find = (key: string) =>
+      data!.scenarios.find((scenario) => scenario.key === key)!;
+
+    // Both well evidenced: comparing thinly supported corners would be
+    // comparing the model's extrapolation, not what it learned.
+    const urban = find(
+      "low_<=50|Local road - urban|Bright sun|Sealed|Flat|False",
+    );
+    const openRoad = find(
+      "high_81-100|Local road - open road|Dark|Sealed|Flat|False",
+    );
+
+    expect(urban.trainingCrashes).toBeGreaterThan(data!.minSupport);
+    expect(openRoad.trainingCrashes).toBeGreaterThan(data!.minSupport);
+    expect(openRoad.probability).toBeGreaterThan(urban.probability * 2);
+  });
+
+  it("carries the evidence behind each scenario, including where there is none", async () => {
+    const { data } = await getScenarios();
+    const grid = data!;
+
+    const thin = grid.scenarios.filter(
+      (scenario) => scenario.trainingCrashes < grid.minSupport,
+    );
+    // Most combinations of six conditions barely occur; the page must be able
+    // to say so rather than presenting extrapolation as evidence.
+    expect(thin.length).toBeGreaterThan(0);
+    expect(thin.length).toBeLessThan(grid.scenarios.length);
+
+    for (const scenario of grid.scenarios) {
+      expect(scenario.trainingCrashes).toBeGreaterThanOrEqual(0);
+      if (scenario.trainingCrashes === 0) {
+        expect(scenario.observedSevereRate).toBeNull();
+      } else {
+        expect(scenario.observedSevereRate).toBeGreaterThanOrEqual(0);
+        expect(scenario.observedSevereRate).toBeLessThanOrEqual(1);
+      }
     }
   });
 });

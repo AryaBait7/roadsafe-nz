@@ -109,6 +109,11 @@ def main() -> None:
 
             train_model.main()
 
+        with timer.step("explain severity model"):
+            import explain_model
+
+            explain_model.main()
+
     record = {
         "completedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "snapshot": {

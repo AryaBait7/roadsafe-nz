@@ -6,6 +6,8 @@ import type {
   DatasetSplit,
   FeatureImportanceReport,
   ModelMetrics,
+  ScenarioGrid,
+  ShapSummary,
   TrainingDataProfile,
 } from "@/types";
 
@@ -42,6 +44,31 @@ export async function getModelMetrics(): Promise<
   ApiResponse<ModelMetrics | null>
 > {
   const fixture = await loadModelFixture<ModelMetrics>("model-metrics");
+  return fixture ?? { data: null, meta: { ...NO_MODEL } };
+}
+
+/**
+ * SHAP explanations for the trained model: which inputs push a prediction
+ * towards or away from "severe", and by how much.
+ *
+ * Later: apiGet<ShapSummary>("/api/ml/explain")
+ */
+export async function getShapSummary(): Promise<ApiResponse<ShapSummary | null>> {
+  const fixture = await loadModelFixture<ShapSummary>("shap-summary");
+  return fixture ?? { data: null, meta: { ...NO_MODEL } };
+}
+
+/**
+ * Model predictions for every combination of the conditions the scenario
+ * explorer offers, scored in the pipeline. Shipping the grid rather than the
+ * model keeps the browser free of a runtime, and the numbers are the model's
+ * own rather than an approximation of it.
+ *
+ * Later: apiGet<ScenarioGrid>("/api/ml/scenarios") — or a live prediction
+ * endpoint, once there is a server that can host the model.
+ */
+export async function getScenarios(): Promise<ApiResponse<ScenarioGrid | null>> {
+  const fixture = await loadModelFixture<ScenarioGrid>("scenarios");
   return fixture ?? { data: null, meta: { ...NO_MODEL } };
 }
 

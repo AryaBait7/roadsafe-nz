@@ -1,7 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
-Reflects the implementation as of Stage 20 (2026-09-18).
+Reflects the implementation as of Stage 21 (2026-09-18).
 
 ## Target architecture
 
@@ -79,7 +79,7 @@ fixture shape *is* the API contract.
 | analyticsService | `getContributingFactors`, `getSeverityLift`, `getBaselineSevereRate`, `getHotspots`, `getHotspotDetail` | `/api/crashes/factors`, `/api/risk-factors`, `/api/hotspots[/{id}]` |
 | datasetService | `getDataDictionary` | `/api/dataset/dictionary` |
 | analyticsService | `getAdjustedAssociations` (whole dataset, not filtered) | `/api/risk-factors/adjusted` |
-| mlService | `getModelMetrics`, `getFeatureImportance` (measured; null if the fixture is absent), `getTrainingDataProfile` | `/api/ml/*` |
+| mlService | `getModelMetrics`, `getFeatureImportance`, `getShapSummary`, `getScenarios` (all measured; null if a fixture is absent), `getTrainingDataProfile` | `/api/ml/*` |
 
 `getSummaryComparison` returns the selected period and the equivalent
 preceding period, only when a year range is chosen. `getSeverityLift`
@@ -106,6 +106,8 @@ cas_crash_data_features.csv (82 columns, gitignored)
    |  train_model.py (--train)      chronological split, 4 candidates, one test scoring
    |                                -> model-metrics.json, feature-importance.json,
    |                                   models/severity_model.joblib (gitignored)
+   |  explain_model.py              TreeSHAP + every scenario scored in advance
+   |                                -> shap-summary.json, scenarios.json
 frontend/src/data/fixtures/*.json (~7.4MB, committed; rewritten only when data changes)
    |  pipeline_run.json             snapshot sha256 + content fingerprint + step timings (committed)
    |  loadFixture() + services/dev/crashCube.ts
@@ -273,6 +275,18 @@ Two kinds, split by whether they depend on the filters:
   dataset. Refitting per filter would produce a different model each time and
   estimates that cannot be compared, so this is deliberately not filter-aware
   and the page says so.
+
+## Explaining the model without shipping it
+
+The scenario explorer needs model predictions, but the browser has no Python
+runtime and the frontend must stay a static-friendly Next.js app. Every
+combination of the six offered conditions (512) is therefore scored in the
+pipeline, with SHAP contributions attached, and the page looks the answer up.
+The figures are the model's own rather than an approximation.
+
+Each scenario also carries how many training crashes match it. Most
+combinations of six conditions barely occur, so without that count the
+explorer would present extrapolation with the same confidence as evidence.
 
 ## Testing
 

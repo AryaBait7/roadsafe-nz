@@ -425,3 +425,77 @@ export interface AdjustedAssociations {
   };
   terms: AssociationTerm[];
 }
+
+/** One input's overall influence on the model, in log-odds. */
+export interface ShapFeature {
+  feature: string;
+  /** Mean |SHAP| across the sample: size of push, direction ignored. */
+  meanAbsoluteShap: number;
+}
+
+/** The average push a single category level applies when it is present. */
+export interface ShapLevel {
+  label: string;
+  /** Positive pushes towards "severe", negative away from it. */
+  meanShap: number;
+  /** Share of sampled crashes with this level. */
+  share: number;
+}
+
+export interface ShapContribution {
+  label: string;
+  shap: number;
+}
+
+/** One real crash from the sample, with what moved its prediction. */
+export interface ShapExample {
+  title: string;
+  probability: number;
+  conditions: Record<string, string>;
+  contributions: ShapContribution[];
+}
+
+/** GET /api/ml/explain */
+export interface ShapSummary {
+  model: string;
+  method: string;
+  sampleRows: number;
+  testYears: [number, number];
+  /** The model's average prediction, in log-odds, before any feature pushes. */
+  baseLogOdds: number;
+  features: ShapFeature[];
+  levels: ShapLevel[];
+  examples: ShapExample[];
+}
+
+export interface ScenarioDimension {
+  column: string;
+  label: string;
+  options: { value: string; label: string }[];
+}
+
+export interface Scenario {
+  /** Option values joined by "|", in dimension order. */
+  key: string;
+  probability: number;
+  /**
+   * Training crashes matching these conditions, across every region and
+   * traffic control — not only the values the model holds fixed. A low count
+   * means the model is extrapolating.
+   */
+  trainingCrashes: number;
+  /** Severe share of those crashes, or null when there were none. */
+  observedSevereRate: number | null;
+  contributions: ShapContribution[];
+}
+
+/** GET /api/ml/scenarios — every combination scored in advance. */
+export interface ScenarioGrid {
+  dimensions: ScenarioDimension[];
+  /** Inputs the grid does not vary, and the value they are fixed at. */
+  heldFixed: { feature: string; value: string }[];
+  baseLogOdds: number;
+  /** Below this many matching crashes, a scenario is flagged as thin. */
+  minSupport: number;
+  scenarios: Scenario[];
+}

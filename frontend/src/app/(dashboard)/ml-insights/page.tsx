@@ -16,8 +16,11 @@ import { DIVERGING, SEVERITY_COLORS } from "@/lib/chart-theme";
 import {
   getFeatureImportance,
   getModelMetrics,
+  getScenarios,
+  getShapSummary,
   getTrainingDataProfile,
 } from "@/services/mlService";
+import { ScenarioExplorer } from "@/features/ml/ScenarioExplorer";
 
 export const metadata = { title: "ML Insights" };
 
@@ -48,11 +51,15 @@ const METRICS = [
 ];
 
 export default async function MlInsightsPage() {
-  const [profile, metrics, importance] = await Promise.all([
-    getTrainingDataProfile(),
-    getModelMetrics(),
-    getFeatureImportance(),
-  ]);
+  const [profile, metrics, importance, explanation, scenarios] =
+    await Promise.all([
+      getTrainingDataProfile(),
+      getModelMetrics(),
+      getFeatureImportance(),
+      getShapSummary(),
+      getScenarios(),
+    ]);
+  const shap = explanation.data;
 
   const data = profile.data;
   const trained = metrics.data;
@@ -508,7 +515,7 @@ export default async function MlInsightsPage() {
           <Card className="xl:col-span-6">
             <CardHeader>
               <div className="min-w-0">
-                <CardTitle>Feature importance and SHAP</CardTitle>
+                <CardTitle>What the model leans on</CardTitle>
                 <CardDescription>
                   Which inputs move the prediction, and in which direction.
                 </CardDescription>
@@ -521,8 +528,8 @@ export default async function MlInsightsPage() {
                   <p className="text-[11px] leading-relaxed text-surface-500">
                     {importance.data.method}: each input is shuffled and the
                     drop in PR-AUC measured, so the scale is &ldquo;how much
-                    worse the ranking gets without it&rdquo;. It is unsigned —
-                    SHAP (Stage 21) adds the direction of each push.
+                    worse the ranking gets without it&rdquo;. It is unsigned;
+                    the SHAP panel below adds the direction of each push.
                   </p>
                   <BarList
                     data={importance.data.items.map((item) => ({
@@ -728,21 +735,180 @@ export default async function MlInsightsPage() {
             </>
           ) : null}
 
+          {shap ? (
+            <Card className="xl:col-span-7">
+              <CardHeader>
+                <div className="min-w-0">
+                  <CardTitle>
+                    Which conditions push a prediction, and where
+                  </CardTitle>
+                  <CardDescription>
+                    {shap.method}, on {formatNumber(shap.sampleRows)} crashes
+                    from {shap.testYears[0]}–{shap.testYears[1]}. Each bar is
+                    the average push that level applies when it is present.
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardBody>
+                <ul className="space-y-1.5">
+                  {[...shap.levels.slice(0, 6), ...shap.levels.slice(-4)].map(
+                    (level) => {
+                      const worse = level.meanShap >= 0;
+                      const widest = Math.max(
+                        ...shap.levels.map((l) => Math.abs(l.meanShap)),
+                      );
+
+                      return (
+                        <li
+                          key={level.label}
+                          className="grid grid-cols-[minmax(0,11rem)_1fr_auto] items-center gap-2"
+                        >
+                          <span
+                            className="truncate text-[11px] text-surface-700"
+                            title={level.label}
+                          >
+                            {level.label}
+                          </span>
+                          <span className="relative block h-3">
+                            <span
+                              aria-hidden
+                              className="absolute inset-y-0 left-1/2 w-px bg-surface-300"
+                            />
+                            <span
+                              className="absolute top-1/2 h-2.5 -translate-y-1/2"
+                              style={{
+                                [worse ? "left" : "right"]: "50%",
+                                width: `${(Math.abs(level.meanShap) / widest) * 50}%`,
+                                backgroundColor: worse
+                                  ? DIVERGING.above
+                                  : DIVERGING.below,
+                                borderRadius: worse
+                                  ? "0 3px 3px 0"
+                                  : "3px 0 0 3px",
+                              }}
+                            />
+                          </span>
+                          <span
+                            className="tabular text-right text-[11px] font-medium"
+                            style={{
+                              color: worse ? DIVERGING.above : DIVERGING.below,
+                            }}
+                          >
+                            {worse ? "+" : "−"}
+                            {Math.abs(level.meanShap).toFixed(2)}
+                          </span>
+                        </li>
+                      );
+                    },
+                  )}
+                </ul>
+                <p className="mt-3 text-[11px] leading-relaxed text-surface-600">
+                  <span className="font-medium text-navy-900">
+                    Read the &ldquo;Unknown&rdquo; levels as a warning, not a
+                    finding.
+                  </span>{" "}
+                  The strongest pushes in either direction come from missing
+                  data: an unrecorded light condition pulls hard away from
+                  severe, an unrecorded speed limit pushes towards it. That
+                  matches what the Risk Factors page found, and it means the
+                  model has partly learned how CAS records are completed.
+                  Removing those levels is the first thing to try in a further
+                  pass.
+                </p>
+              </CardBody>
+            </Card>
+          ) : null}
+
+          {shap ? (
+            <Card className="xl:col-span-5">
+              <CardHeader>
+                <div className="min-w-0">
+                  <CardTitle>Three real crashes, explained</CardTitle>
+                  <CardDescription>
+                    Actual rows from the test years. The pushes add to the
+                    prediction, so an explanation is arithmetic rather than a
+                    story told afterwards.
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardBody className="space-y-3">
+                {shap.examples.map((example) => (
+                  <div
+                    key={example.title}
+                    className="rounded-md border border-surface-200 p-2.5"
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-[11px] font-medium text-navy-900">
+                        {example.title}
+                      </p>
+                      <p className="tabular text-[13px] font-semibold text-navy-900">
+                        {/* Two decimals: the lowest-risk example rounds to
+                            "0.0%" at one, which reads as impossible. */}
+                        {formatPercent(example.probability, 2)}
+                      </p>
+                    </div>
+                    <ul className="mt-1 space-y-0.5">
+                      {example.contributions.map((contribution) => (
+                        <li
+                          key={contribution.label}
+                          className="flex items-baseline justify-between gap-2 text-[10px]"
+                        >
+                          <span className="min-w-0 truncate text-surface-600">
+                            {contribution.label}
+                          </span>
+                          <span
+                            className="tabular shrink-0 font-medium"
+                            style={{
+                              color:
+                                contribution.shap >= 0
+                                  ? DIVERGING.above
+                                  : DIVERGING.below,
+                            }}
+                          >
+                            {contribution.shap >= 0 ? "+" : "−"}
+                            {Math.abs(contribution.shap).toFixed(2)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </CardBody>
+            </Card>
+          ) : null}
+
           <Card className="xl:col-span-12">
             <CardHeader>
               <div className="min-w-0">
                 <CardTitle>Scenario explorer</CardTitle>
                 <CardDescription>
-                  Set road and environment conditions and see the estimated
-                  chance that a crash under them would be serious or fatal.
+                  Set road and environment conditions and see what the model
+                  says about a crash reported under them. It does not say how
+                  likely a crash is on such a road.
                 </CardDescription>
               </div>
-              <PlaceholderBadge />
+              {scenarios.data ? null : <PlaceholderBadge />}
             </CardHeader>
-            <CardBody className="text-[11px] leading-relaxed text-surface-500">
-              Available once a model is trained. It will describe severity for a
-              crash that has already happened under the chosen conditions — it
-              will not say how likely a crash is on a given road.
+            <CardBody>
+              {scenarios.data ? (
+                <>
+                  <ScenarioExplorer grid={scenarios.data} />
+                  <p className="mt-3 text-[10px] leading-snug text-surface-500">
+                    Every combination was scored by the model in the pipeline,
+                    so these are its own outputs rather than an approximation.
+                    The inputs not offered here are held at their most common
+                    training value:{" "}
+                    {scenarios.data.heldFixed
+                      .map((held) => `${held.feature} ${held.value}`)
+                      .join(", ")}
+                    . Changing those would move the figures.
+                  </p>
+                </>
+              ) : (
+                <p className="text-[11px] leading-relaxed text-surface-500">
+                  Available once a model is trained.
+                </p>
+              )}
             </CardBody>
           </Card>
         </div>

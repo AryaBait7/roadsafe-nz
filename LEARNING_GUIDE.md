@@ -929,7 +929,22 @@ Two runs gave the same fingerprint and changed no fixture.
 
 ---
 
-## 44. Verifying work instead of assuming it
+## 44. Explaining a model, and the limits of explanation
+
+**What**: SHAP assigns each input a signed contribution, in log-odds, that sums to the difference between a prediction and the model's average. TreeSHAP computes this exactly for tree ensembles. Two findings came out of it:
+- The strongest pushes were "Unknown" levels — the model had learned how records are completed, not how roads behave.
+- A scenario explorer will answer any question, including combinations that barely exist. "Fast, dark, unsealed, hilly state highway" had 34 matching training crashes and produced a prediction that contradicted every other view. Publishing each scenario's support fixed the presentation, not the model.
+
+**Interview questions**
+- What does a SHAP value mean, and in what units?
+- How is SHAP different from permutation importance, and when would you use each?
+- Why is SHAP not causal evidence?
+- A stakeholder asks your explorer about a combination with almost no data. What should the product do?
+- How would you decide whether to refit the model without the "Unknown" levels?
+
+---
+
+## 45. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182
