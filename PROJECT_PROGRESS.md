@@ -4,7 +4,20 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 12 (Responsive/mobile) — complete.** Next up: Stage 13 (Animation + UX polish).
+**Stage 13 (Animation + UX polish) — complete.** Next up: Stage 14 (Loading/error/empty states).
+
+### Stage 13 — Animation + UX polish (done 2026-09-17)
+
+The rule for this stage: motion must explain a change and never gate content.
+
+- **Filter feedback.** Filtered pages render on the server, so Apply took about 1.3s with no visible response. Navigation now runs inside `useTransition`: the button reads "Updating…" and disables, and the panel sets `aria-busy`. Measured: states `Updating…` → `Apply filters`, URL updated after 1,330ms.
+- **Bars animate between filter states.** Rows are keyed by label, so React reuses the same element and a 500ms width transition shows how each value moved. Verified that all 14 dashboard bars are the same DOM nodes before and after a filter change.
+- **Reduced motion reaches the charts.** Recharts draws with JavaScript, out of reach of the global CSS rule. A `usePrefersReducedMotion` hook (`useSyncExternalStore`, SSR-safe) now switches that off, and the default 1.5s line draw is shortened to 700ms.
+- **Page entrance.** `app/(dashboard)/template.tsx` adds a 220ms, 6px rise when moving between pages, and does not replay on filter changes. It is transform-only by design: in the preview pane the document is `hidden` and the animation timeline sits at 0, and the page is still fully visible, just 6px lower.
+- **Cleanup.** Removed the unused `road-travel` and `scenery-drift` keyframes left from the first intro.
+
+**Not verifiable here:** the pane cannot emulate `prefers-reduced-motion` and does not advance animation timelines, so motion was checked by computed styles, animation state and DOM identity rather than by watching it.
+
 
 ### Stage 12 — Responsive/mobile (done 2026-09-17)
 
@@ -129,8 +142,8 @@ Seven requested changes, all against the existing components — no rebuild.
 | 10 | Reports | ✅ Complete |
 | 11 | Data Dictionary | ✅ Complete |
 | 12 | Responsive/mobile | ✅ Complete |
-| 13 | Animation + UX polish | ⏭️ Next |
-| 14 | Loading/error/empty states | 🟡 Empty states wired on every data page; route-level loading/error boundaries pending |
+| 13 | Animation + UX polish | ✅ Complete |
+| 14 | Loading/error/empty states | ⏭️ Next — 🟡 empty states wired on every data page; route-level loading/error boundaries pending |
 | 15 | Consistency + accessibility pass | 🔲 |
 | 16 | Frontend testing + performance | 🔲 |
 | 17–21 | Data pipeline, PostGIS, analytics, ML, explainability | 🟡 Pipeline + EDA + features done (see below) |
@@ -375,7 +388,7 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 13 — animation and UX polish.** Remove the legacy keyframes in globals.css (`road-travel`, `scenery-drift`, `scroll-hint`) if unused, and review the page-transition and hover states.
-2. **Stages 14–16** — route-level loading/error boundaries, consistency and accessibility audit, tests and performance.
+1. **Stage 14 — loading, error and empty states.** Add route-level `loading.tsx` and `error.tsx`, handle a missing fixture gracefully, and check that every empty state explains what to change.
+2. **Stages 15–16** — consistency and accessibility audit, tests and performance.
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
 4. **Open data items before modelling:** drop the two 100%-empty columns (`intersection`, `crashRoadSideRoad`); decide fill-0 vs missing for the 57.3%-missing roadside-object block; investigate the grid cell at [-47.5, 179.0] tagged region "Unknown".

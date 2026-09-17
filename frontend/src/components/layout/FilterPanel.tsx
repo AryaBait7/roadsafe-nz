@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { parseFilters, toSearchParams } from "@/lib/filters";
@@ -30,6 +30,11 @@ function FilterForm({
   const router = useRouter();
   const pathname = usePathname();
   const [draft, setDraft] = useState<CrashFilters>(current);
+  // Filtered pages render on the server, so a new view can take a moment.
+  // Navigating inside a transition keeps the current page on screen and
+  // exposes that wait, instead of a button that appears to do nothing.
+  const [isPending, startTransition] = useTransition();
+  const navigate = (href: string) => startTransition(() => router.push(href));
 
   const set = (key: keyof CrashFilters) => (value: string) =>
     setDraft((previous) => ({
@@ -45,12 +50,12 @@ function FilterForm({
 
   const apply = () => {
     const query = toSearchParams(draft).toString();
-    router.push(query ? `${pathname}?${query}` : pathname);
+    navigate(query ? `${pathname}?${query}` : pathname);
   };
 
   const reset = () => {
     setDraft({});
-    router.push(pathname);
+    navigate(pathname);
   };
 
   const years = options
@@ -64,7 +69,10 @@ function FilterForm({
   const isEmpty = toSearchParams(draft).toString() === "";
 
   return (
-    <div className="space-y-2.5 border-t border-navy-700 px-3 py-3.5">
+    <div
+      className="space-y-2.5 border-t border-navy-700 px-3 py-3.5"
+      aria-busy={isPending}
+    >
       <h2 className="text-[10px] font-semibold tracking-wider text-surface-400 uppercase">
         Filters
       </h2>
@@ -112,14 +120,29 @@ function FilterForm({
       />
 
       <div className="flex gap-2 pt-1">
-        <Button size="sm" className="flex-1" onClick={apply} disabled={unchanged}>
-          Apply filters
+        <Button
+          size="sm"
+          className="flex-1"
+          onClick={apply}
+          disabled={unchanged || isPending}
+        >
+          {isPending ? (
+            <span className="flex items-center justify-center gap-1.5">
+              <span
+                aria-hidden
+                className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+              />
+              Updating…
+            </span>
+          ) : (
+            "Apply filters"
+          )}
         </Button>
         <Button
           size="sm"
           variant="secondary"
           onClick={reset}
-          disabled={isEmpty && unchanged}
+          disabled={(isEmpty && unchanged) || isPending}
         >
           Reset
         </Button>

@@ -81,7 +81,7 @@ export function DivergingBars({
                   className="absolute inset-y-0 left-1/2 w-px bg-surface-300"
                 />
                 <span
-                  className="absolute top-1/2 h-3 -translate-y-1/2"
+                  className="absolute top-1/2 h-3 -translate-y-1/2 transition-[width] duration-500 ease-out"
                   style={{
                     [worse ? "left" : "right"]: "50%",
                     width: `${extent}%`,

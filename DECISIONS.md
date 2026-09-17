@@ -319,3 +319,11 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: the data dictionary renders collapsible grouped cards below `lg` and the table above it. Maps are capped at 60svh on phones. Filters get a labelled entry point in the mobile top bar.
 
 **Why**: a seven-column table on a phone either scrolls sideways, which hides the description people came for, or crushes every column. A tall map captures the swipes meant to scroll the page. A hamburger alone does not tell anyone the filters are behind it.
+
+---
+
+## 37. Motion explains change and never gates content
+
+**Decision**: animation is used only for state changes (filter pending, bar widths) and a transform-only page entrance. Opacity is never animated from zero. JavaScript animation honours reduced motion explicitly.
+
+**Why**: this extends #33. A frozen or skipped animation, as in a background tab, print or the preview pane, must leave the page usable. Moving bars show *how* a filter changed the values, which a redraw from zero hides. The global CSS reduced-motion rule looks complete but does not touch rAF-based chart libraries.

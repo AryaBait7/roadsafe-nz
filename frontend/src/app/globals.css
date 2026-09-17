@@ -91,6 +91,20 @@
     saturate(0.55);
 }
 
+/* --- Motion ------------------------------------------------------------- */
+
+/* Analytics page entrance (see app/(dashboard)/template.tsx). Transform only,
+   never opacity: if an animation is frozen or skipped (background tab,
+   print, reduced motion) the page is merely 6px out, never invisible. */
+@keyframes page-in {
+  from {
+    transform: translateY(6px);
+  }
+  to {
+    transform: none;
+  }
+}
+
 /* --- Landing page cinematic intro -------------------------------------- */
 
 /* Where the RoadSafe sign stands, in world units (see RoadScene). Narrow
@@ -113,31 +127,7 @@
   }
 }
 
-/* Lane markings travelling toward the viewer. The road plane is rotated in
-   3D, so scrolling its background straight down the Y axis is foreshortened
-   by the perspective transform: markings start slow near the horizon and
-   accelerate as they approach. The acceleration is the projection doing the
-   work, not an eased curve. */
-@keyframes road-travel {
-  from {
-    background-position-y: 0;
-  }
-  to {
-    background-position-y: var(--marking-pitch, 160px);
-  }
-}
-
-/* Scenery bands drift sideways out of frame. Each layer sets its own
-   duration, so nearby objects sweep past while distant ones barely move. */
-@keyframes scenery-drift {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
+/* "Scroll to explore" cue under the hero (HeroIntro). */
 @keyframes scroll-hint {
   0%,
   100% {

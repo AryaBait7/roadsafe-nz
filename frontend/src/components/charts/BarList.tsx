@@ -47,7 +47,9 @@ export function BarList({
             {/* Track is invisible; the fill grows from a single baseline. */}
             <div className="h-3 min-w-0 flex-1">
               <div
-                className="h-full rounded-r-[4px]"
+                // Rows are keyed by label, so a filter change re-renders the
+                // same element and the width change animates in place.
+                className="h-full rounded-r-[4px] transition-[width] duration-500 ease-out"
                 style={{
                   width: `${Math.max((datum.value / max) * 100, 0.6)}%`,
                   backgroundColor: color,

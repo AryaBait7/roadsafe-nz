@@ -826,7 +826,19 @@ print dialog with print-only styles.
 
 ---
 
-## 37. Verifying work instead of assuming it
+## 37. Transitions, reconciliation and pending UI
+
+**What**: a CSS width transition only animates if React keeps the *same* DOM element between renders. That happens because list rows are keyed by a stable label, not by index. `useTransition` around `router.push` exposes an `isPending` flag while the server renders the next view. `useSyncExternalStore` reads a browser-only value (matchMedia) without a hydration mismatch.
+
+**Interview questions**
+- Why can keying list items by array index break animations and state?
+- What does `useTransition` change about a navigation?
+- Why doesn't `@media (prefers-reduced-motion)` stop a Recharts animation?
+- When would you use `useSyncExternalStore` instead of `useState` + `useEffect`?
+
+---
+
+## 38. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

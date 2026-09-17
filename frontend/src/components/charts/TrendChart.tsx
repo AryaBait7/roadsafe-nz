@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { CHART_CHROME, SERIES_1 } from "@/lib/chart-theme";
 import { formatNumber, formatPercent } from "@/lib/formatters";
+import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 
 /**
  * A single measure over time.
@@ -39,6 +40,7 @@ export function TrendChart({
   /** Only override for small multiples where each panel *is* a category. */
   color?: string;
 }) {
+  const reduceMotion = usePrefersReducedMotion();
   const format = (value: number) =>
     kind === "rate" ? formatPercent(value) : formatNumber(value);
 
@@ -95,6 +97,12 @@ export function TrendChart({
             // A dot per year would be 21 marks competing with the line; the
             // crosshair tooltip already answers "what was 2019".
             dot={false}
+            // Recharts animates in JavaScript, out of reach of the global
+            // reduced-motion CSS rule, so it is switched off explicitly. The
+            // default 1.5s draw is also shortened: it read as a loading delay.
+            isAnimationActive={!reduceMotion}
+            animationDuration={700}
+            animationEasing="ease-out"
             activeDot={{ r: 4, strokeWidth: 2, stroke: CHART_CHROME.surface }}
           />
         </LineChart>
