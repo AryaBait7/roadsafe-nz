@@ -95,10 +95,10 @@ cas_crash_data.csv (199MB, gitignored; manifest committed)
    |  clean_data.py                 "Null" strings, object block → 0 + object_involved,
    |                                pedestrian → 0, NZTM → WGS84, location_valid,
    |                                drop empty columns, is_severe
-cas_crash_data_clean.csv (73 columns, gitignored)
+cas_crash_data_clean.csv (74 columns, gitignored)
    |  validate clean
    |  feature_engineering.py        vehicle counts, condition flags, hazard score, speed bins
-cas_crash_data_features.csv (81 columns, gitignored)
+cas_crash_data_features.csv (82 columns, gitignored)
    |  validate features
    |  generate_frontend_fixtures.py (+ generate_data_dictionary.py, which reads DATA_DICTIONARY.md)
 frontend/src/data/fixtures/*.json (~7.4MB, committed; rewritten only when data changes)

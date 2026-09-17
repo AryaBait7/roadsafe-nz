@@ -4,7 +4,100 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 17 (Reproducible CAS pipeline) — complete.** Next up: Stage 18 (PostgreSQL + PostGIS).
+**Stage 17 (Reproducible CAS pipeline) — complete. Stage 18 (PostgreSQL + PostGIS) — in progress, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+
+### Stage 18 — PostgreSQL + PostGIS (in progress, 2026-09-17)
+
+#### Written (saved and committed; not yet run)
+
+| File | Purpose |
+|---|---|
+| `docker-compose.yml` | Service `db`, image `postgis/postgis:17-3.5` (versions RDS also offers). Container `roadsafe-db`, named volume `roadsafe-pgdata`. Published on `127.0.0.1:5434` only, because native PostgreSQL 17/18 already use 5432/5433. Health check uses `pg_isready`. Refuses to start without `POSTGRES_PASSWORD`. |
+| `.env.example` | Committed template: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`. |
+| `.env` | **Local only, gitignored.** Password generated with Python `secrets` and never printed. |
+| `database/migrations/001_init.sql` | Details below. |
+| `data-pipeline/src/load_database.py` | Details below. |
+| `data-pipeline/requirements.txt` | Adds `psycopg==3.3.5`, `psycopg-binary==3.3.5`, `python-dotenv==1.2.3` (installed in the venv). |
+
+**`001_init.sql`** enables PostGIS and creates:
+- **`snapshots`:** sha256, unique `content_fingerprint`, source timestamps, row count.
+- **`crashes`:**
+  - All 82 pipeline columns in snake_case.
+  - Its own `crash_id` key; `OBJECTID` is kept only as `source_object_id`, unique per snapshot.
+  - `geom geometry(Point, 4326)`, NULL when `location_valid` is false.
+  - CHECK constraints: the severity values, `is_severe` agreeing with severity, geometry present exactly when the location is valid, and the hazard score range.
+  - Indexes on (snapshot, year), region, TLA and severity, plus a GiST index on `geom`.
+- **`current_crashes` view:** the latest snapshot only.
+
+**`load_database.py`:**
+- reads settings from `.env`;
+- applies migrations in name order and records them in `schema_migrations`;
+- skips a snapshot whose fingerprint is already loaded (`--replace` reloads it);
+- checks that the CSV and schema columns match exactly;
+- bulk-loads a temporary staging table with `COPY` in 50,000-row chunks, then inserts with `ST_MakePoint` geometry, all in **one transaction**;
+- reconciles database totals against the CSV (crashes, serious, fatal, killed, injured, rows without geometry, rows without area, distinct source IDs) and rolls everything back on any mismatch;
+- runs `ANALYZE`.
+
+**Checked without a database:** `load_database.py` compiles, and the 13 pipeline tests still pass.
+
+#### Untested because Docker is unavailable
+
+- `docker compose up` itself: the image pull (~400MB), container start, the health check and the `.env` substitution.
+- Whether `001_init.sql` runs, including the `ON COMMIT DROP` staging table and every CHECK constraint against real rows.
+- The loader end to end: the connection, `COPY` of 705,609 rows, geometry creation, the reconciliation figures, the skip-if-loaded path and `--replace`.
+- Load time and database size. **Drive C had only about 3.95GB free**, so check space before pulling the image.
+- No SQL reconciliation against the site's published figures yet (705,609 / 41,263 / 6,182 / 6,911 / 280,236; 1 crash without geometry; 140 without area).
+
+#### Why Docker is down (for the record)
+
+Docker Desktop 4.84.0 starts, then its backend crashes and shows an error dialog offering "Quit" or "Reset to factory defaults"; no reset was done. The cause, from `%LOCALAPPDATA%\Docker\backend.error.json` and the backend log: Windows cannot access the Unix socket files Docker creates.
+- It first failed on stale socket stubs from 26 Aug in `%LOCALAPPDATA%\Docker\run`.
+- Those could not be deleted, so the `run` folder was **renamed to `run.stale-20260826`**. That is the only change made to Docker's files, and it is reversible. An older `run_stale_20260826091957` folder already existed.
+- On restart, Docker recreated `run\dockerInference` in the same broken state, then also failed on `%LOCALAPPDATA%\docker-secrets-engine\engine.sock`.
+- WSL distro `docker-desktop` stayed Stopped. Nothing in WSL or in Docker's data was modified. Next attempt: a Windows restart.
+
+#### Resume steps after restarting Windows
+
+Run from the repo root in Git Bash unless noted.
+
+1. Start Docker Desktop and wait until it reports the engine is running (no error dialog). Then check:
+   ```bash
+   docker version --format '{{.Server.Version}}'
+   ```
+   If it still crashes on a socket file, **stop and report back**; do not reset Docker.
+2. Check free disk space (the image and database need well over 1GB):
+   ```bash
+   df -h /c
+   ```
+3. Start the database:
+   ```bash
+   docker compose up -d db
+   docker compose ps
+   ```
+   Wait until `roadsafe-db` shows `healthy`.
+4. Load the data. From `data-pipeline/`:
+   ```bash
+   venv/Scripts/python src/download_data.py --verify
+   venv/Scripts/python src/load_database.py
+   ```
+   Expect the migration to apply and the reconciliation to print 705,609 crashes, 41,263 serious, 6,182 fatal, 6,911 killed, 280,236 injured, 1 without geometry and 140 without area.
+5. Prove the load is idempotent. Running it again should print "already loaded":
+   ```bash
+   venv/Scripts/python src/load_database.py
+   ```
+6. Spot-check in SQL:
+   ```bash
+   docker exec -it roadsafe-db psql -U roadsafe -d roadsafe -c "SELECT postgis_full_version();"
+   docker exec -it roadsafe-db psql -U roadsafe -d roadsafe -c "SELECT count(*), count(geom) FROM current_crashes;"
+   ```
+7. Then finish Stage 18:
+   - add database integration tests (skipped when no database is reachable);
+   - add a spatial example query, e.g. crashes within a radius using `geography`;
+   - record load time and database size;
+   - add an optional `--load-db` step to `run_pipeline.py`;
+   - update ARCHITECTURE, DECISIONS and LEARNING_GUIDE;
+   - make the final Stage 18 commit.
+
 
 ### Stage 17 — Reproducible CAS pipeline (done 2026-09-17)
 
@@ -37,7 +130,7 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 The whole run takes about 2.5 minutes. **A second run gave the same fingerprint and left every fixture file untouched.** Fixture writing now skips files whose data is unchanged, so a timestamp alone doesn't rewrite 7MB.
 
 **Fixes found on the way:**
-- The run record counted clean columns after feature engineering had added its own in place (81 reported, 73 real).
+- The run record counted clean columns after feature engineering had added its own in place (81 reported, 73 real at the time; 74 and 82 once `location_valid` was added).
 - The dictionary's example for all-unique columns depended on row order; it now uses the smallest value.
 
 **Tests:** 13 pytest unit tests (`python -m pytest`), and 30 frontend tests updated for 82 dictionary columns, 1 unmapped crash, 140 unattributed crashes and 67 hotspots.
@@ -242,7 +335,7 @@ Seven requested changes, all against the existing components — no rebuild.
 | 15 | Consistency + accessibility pass | ✅ Complete |
 | 16 | Frontend testing + performance | ✅ Complete |
 | 17 | Reproducible CAS pipeline | ✅ Complete |
-| 18 | PostgreSQL + PostGIS | ⏭️ Next |
+| 18 | PostgreSQL + PostGIS | 🟡 In progress: schema and loader written, untested (Docker down) |
 | 19–21 | Analytics, ML, explainability | 🔲 |
 | 22 | Node/Express REST API | 🔲 |
 | 23 | Connect frontend to real API | 🔲 |
@@ -485,6 +578,6 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 18 — PostgreSQL + PostGIS.** Needs a database: Docker or a native install. Load from the pipeline output with a surrogate key, since `OBJECTID` is not stable across snapshots.
+1. **Stage 18 — PostgreSQL + PostGIS.** Restart Windows, then follow "Resume steps after restarting Windows" in the Stage 18 section above.
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
 4. **Data items resolved in Stage 17.** Remaining for Stage 20: decide whether `object_involved` becomes a model feature, since it is known at report time but describes the crash itself.

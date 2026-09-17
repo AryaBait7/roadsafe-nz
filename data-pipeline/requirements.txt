@@ -113,3 +113,6 @@ widgetsnbextension==4.0.16
 pytest==9.1.1
 pluggy==1.6.0
 iniconfig==2.3.0
+psycopg==3.3.5
+psycopg-binary==3.3.5
+python-dotenv==1.2.3

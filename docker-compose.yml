@@ -1,0 +1,31 @@
+# Local PostGIS for RoadSafe NZ.
+#
+#   cp .env.example .env        # then set POSTGRES_PASSWORD
+#   docker compose up -d db
+#
+# PostgreSQL 17 + PostGIS 3.5 matches what AWS RDS offers, so the schema and
+# queries carry over to Stage 24 unchanged. The port is published on
+# localhost only, and on 5434 so it never collides with a native install.
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    container_name: roadsafe-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-roadsafe}
+      POSTGRES_USER: ${POSTGRES_USER:-roadsafe}
+      # Required: compose refuses to start without it rather than falling
+      # back to a default password.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - roadsafe-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  roadsafe-pgdata:
