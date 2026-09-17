@@ -460,9 +460,10 @@ Seven requested changes, all against the existing components — no rebuild.
 | 21 | Explainability (SHAP) | ✅ Complete |
 | 22 | Node/Express REST API | ✅ Complete |
 | 23 | Connect frontend to the API | ⏭️ Next |
-| 22 | Node/Express REST API | 🔲 |
-| 23 | Connect frontend to real API | 🔲 |
-| 24–27 | AWS, CI/CD, testing, portfolio docs | 🔲 |
+| 24 | AWS deployment |  |
+| 25 | CI/CD, security, monitoring |  |
+| 26 | Final testing |  |
+| 27 | Portfolio documentation |  |
 
 ### Stage 1 part B — data layer (done 2026-09-16)
 
@@ -702,7 +703,7 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 ## Next steps
 
 1. **Stage 23 — connect the frontend to the API.** Switch service bodies to `apiGet`, delete `frontend/src/services/dev/` and the duplicated aggregation, and decide what the pages do when the API is down (the Stage 14 error boundary already covers a failed fetch).
-2. **Worth doing to the model:** refit without the "Unknown" levels, which SHAP shows it leaning on.
 2. **Stage 18 — PostgreSQL + PostGIS** remains blocked on Docker; see that section for options and resume steps.
-3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
-4. **Data items resolved in Stage 17.** Remaining for Stage 20: decide whether `object_involved` becomes a model feature, since it is known at report time but describes the crash itself.
+3. **Worth doing to the model:** refit without the "Unknown" levels, which SHAP shows it leaning on (light Unknown pushes −1.49).
+4. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
+5. **Data questions are resolved.** `object_involved` was excluded from the model in Stage 20 (DECISIONS #49): what a vehicle struck is partly how the crash ended.
