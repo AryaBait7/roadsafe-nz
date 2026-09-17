@@ -383,3 +383,19 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: the one crash with placeholder coordinates is blanked (`location_valid`) and left off the map. The Unknown territorial authority (140 crashes) is left out of the hotspot ranking. Both pages state how many crashes they exclude.
 
 **Why**: a crash drawn in the ocean, or a "hotspot" whose centroid averages crashes nationwide, is a wrong statement. This extends the missing-data rule from #30. Excluding without saying so would quietly break the totals, so each exclusion is counted and shown.
+
+---
+
+## 45. Show uncertainty where a rate is read as a finding
+
+**Decision**: every condition and area rate carries a 95% Wilson interval. A condition whose interval contains the baseline is drawn faded and labelled "not distinguishable". Area rates are additionally shrunk towards the pooled rate (empirical Bayes), and the hotspot map colours by the shrunk rate.
+
+**Why**: the pages invite comparison, and a bar's length or a map fill reads as a claim. With 35,000 crashes behind it, Twilight's +0.22pp gap is not a finding, and a small district's 15% severe rate is mostly noise. The fixed 5,000-crash rule (#30) hid thin categories but said nothing about the ones it charted. Wilson rather than Wald because Wald collapses at 0% and 100%, exactly where filtered views land.
+
+---
+
+## 46. Adjusted associations are fitted once, over the whole dataset
+
+**Decision**: one logistic regression with every condition entered together, computed in the pipeline and shipped as a fixture. It is not filter-aware, and the page says the filters do not apply to it.
+
+**Why**: crude comparisons cannot separate a condition from the conditions it travels with — unsealed roads are mostly rural and fast, and adjusting drops their odds ratio from 1.95 to 1.11. Refitting per filter would mean a different model per view, with estimates that cannot be compared and no way to state the sample it was fitted on. It stays clearly separated from Stage 20's prediction model: this one is for explanation, is never evaluated on held-out data, and claims association only.

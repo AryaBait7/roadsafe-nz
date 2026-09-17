@@ -2,7 +2,8 @@
 Run the whole data pipeline, raw download to frontend fixtures.
 
     download → validate raw → clean → validate → features → validate
-             → frontend fixtures → data dictionary → run record
+             → frontend fixtures → data dictionary → adjusted associations
+             → run record
 
 Each step is the same function the individual scripts run, so the
 standalone scripts stay useful for debugging one step. The run ends by
@@ -22,6 +23,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
+import analyze_associations
 import clean_data
 import download_data
 import feature_engineering
@@ -90,6 +92,9 @@ def main() -> None:
 
     with timer.step("data dictionary"):
         generate_data_dictionary.main()
+
+    with timer.step("adjusted associations"):
+        analyze_associations.main()
 
     record = {
         "completedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),

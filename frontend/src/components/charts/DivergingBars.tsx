@@ -15,6 +15,10 @@ import type { SeverityLift } from "@/types";
  * The count is not decoration: a rate computed from a few hundred crashes
  * swings far more than one computed from hundreds of thousands, and the
  * reader needs to see which they are looking at.
+ *
+ * Rows whose 95% interval still contains the baseline are drawn faded and
+ * marked: the bar has length, but the gap it shows is within chance for that
+ * sample, so it should not be read as a difference.
  */
 export function DivergingBars({
   data,
@@ -55,6 +59,7 @@ export function DivergingBars({
         {data.map((item) => {
           const worse = item.lift >= 0;
           const extent = (Math.abs(item.lift) / largest) * 50;
+          const uncertain = !item.distinguishable;
 
           return (
             <li
@@ -87,7 +92,13 @@ export function DivergingBars({
                     width: `${extent}%`,
                     backgroundColor: worse ? DIVERGING.above : DIVERGING.below,
                     borderRadius: worse ? "0 4px 4px 0" : "4px 0 0 4px",
+                    opacity: uncertain ? 0.35 : 1,
                   }}
+                  title={
+                    uncertain
+                      ? "95% interval includes the baseline — not distinguishable from average"
+                      : undefined
+                  }
                 />
               </span>
 
@@ -100,7 +111,7 @@ export function DivergingBars({
                   {(Math.abs(item.lift) * 100).toFixed(2)}pp
                 </span>
                 <span className="tabular block text-[10px] text-surface-500">
-                  {formatNumber(item.crashCount)}
+                  {uncertain ? "not distinguishable" : formatNumber(item.crashCount)}
                 </span>
               </span>
             </li>

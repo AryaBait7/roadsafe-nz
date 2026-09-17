@@ -220,6 +220,17 @@ export default async function HotspotsPage({
                         numeric: true,
                         cell: (row) => formatPercent(row.severeRate),
                       },
+                      {
+                        header: "95% interval",
+                        numeric: true,
+                        cell: (row) =>
+                          `${formatPercent(row.severeRateInterval[0])}–${formatPercent(row.severeRateInterval[1])}`,
+                      },
+                      {
+                        header: "Adjusted",
+                        numeric: true,
+                        cell: (row) => formatPercent(row.adjustedSevereRate),
+                      },
                     ]}
                   />
                 }
@@ -231,7 +242,9 @@ export default async function HotspotsPage({
                     <CardTitle>Where they are</CardTitle>
                     <CardDescription>
                       Click an area to select it. Circle size is crash volume;
-                      fill is the share that were serious or fatal.
+                      fill is the adjusted serious-or-fatal share, which pulls
+                      small districts towards the national rate so a handful of
+                      crashes cannot paint an area dark.
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -271,7 +284,11 @@ export default async function HotspotsPage({
                         {formatNumber(selected.area.severeCount)}
                       </span>{" "}
                       serious or fatal (
-                      {formatPercent(selected.area.severeRate)})
+                      {formatPercent(selected.area.severeRate)}, 95% CI{" "}
+                      {formatPercent(selected.area.severeRateInterval[0])}–
+                      {formatPercent(selected.area.severeRateInterval[1])};
+                      adjusted {formatPercent(selected.area.adjustedSevereRate)}
+                      )
                     </p>
                     <Link
                       href={areaHref(filters, null)}

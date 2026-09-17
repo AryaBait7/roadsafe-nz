@@ -57,8 +57,12 @@ export default async function ReportsPage({
   const fileScope = s.totalCrashes > 0 ? `${s.yearFrom}-${s.yearTo}` : "empty";
 
   const severeShare =
-    s.totalCrashes === 0 ? 0 : (s.seriousCrashes + s.fatalCrashes) / s.totalCrashes;
-  const topRegions = regions.data.filter((r) => r.region !== "Unknown").slice(0, 3);
+    s.totalCrashes === 0
+      ? 0
+      : (s.seriousCrashes + s.fatalCrashes) / s.totalCrashes;
+  const topRegions = regions.data
+    .filter((r) => r.region !== "Unknown")
+    .slice(0, 3);
   const reliable = lift.data.factors.filter(
     (f) => !f.isMissingData && f.crashCount >= 5000,
   );
@@ -81,7 +85,11 @@ export default async function ReportsPage({
       description: "Count and share for each CAS severity level.",
       filename: `roadsafe-nz_severity_${fileScope}.csv`,
       columns: ["severity", "crashes", "share"],
-      rows: severity.data.map((r) => [r.severity, r.count, Number(r.share.toFixed(4))]),
+      rows: severity.data.map((r) => [
+        r.severity,
+        r.count,
+        Number(r.share.toFixed(4)),
+      ]),
     },
     {
       title: "Crashes by region",
@@ -97,7 +105,8 @@ export default async function ReportsPage({
     },
     {
       title: "Conditions against the baseline",
-      description: "Every condition, including those held out of the chart, with a missing-data flag.",
+      description:
+        "Every condition with its 95% interval, including those held out of the chart.",
       filename: `roadsafe-nz_conditions_${fileScope}.csv`,
       columns: [
         "condition",
@@ -105,7 +114,10 @@ export default async function ReportsPage({
         "crashes",
         "serious_or_fatal",
         "severe_rate",
+        "severe_rate_ci_low",
+        "severe_rate_ci_high",
         "lift_pp",
+        "distinguishable_from_baseline",
         "is_missing_data",
       ],
       rows: lift.data.factors.map((r) => [
@@ -114,7 +126,10 @@ export default async function ReportsPage({
         r.crashCount,
         r.severeCount,
         Number(r.severeRate.toFixed(4)),
+        Number(r.severeRateInterval[0].toFixed(4)),
+        Number(r.severeRateInterval[1].toFixed(4)),
         Number((r.lift * 100).toFixed(2)),
+        r.distinguishable ? "yes" : "no",
         r.isMissingData ? "yes" : "no",
       ]),
     },
@@ -146,12 +161,14 @@ export default async function ReportsPage({
   const planned = [
     {
       title: "Regional PDF reports",
-      description: "Formatted per-region documents with maps and trend commentary.",
+      description:
+        "Formatted per-region documents with maps and trend commentary.",
       needs: "Server-side report generation (Stage 22).",
     },
     {
       title: "Model evaluation report",
-      description: "Metrics, confusion matrix and SHAP explanations for the severity model.",
+      description:
+        "Metrics, confusion matrix and SHAP explanations for the severity model.",
       needs: "A trained model (Stage 20).",
     },
     {
@@ -195,9 +212,10 @@ export default async function ReportsPage({
                     Headline
                   </h4>
                   <p className="mt-1.5">
-                    Between {scope}, <strong>{formatNumber(s.totalCrashes)}</strong>{" "}
-                    crashes were recorded. {formatNumber(s.seriousCrashes)} were
-                    serious and {formatNumber(s.fatalCrashes)} fatal —{" "}
+                    Between {scope},{" "}
+                    <strong>{formatNumber(s.totalCrashes)}</strong> crashes were
+                    recorded. {formatNumber(s.seriousCrashes)} were serious and{" "}
+                    {formatNumber(s.fatalCrashes)} fatal —{" "}
                     {formatPercent(severeShare)} of the total. They killed{" "}
                     {formatNumber(s.peopleKilled)} people and injured{" "}
                     {formatNumber(s.peopleInjured)}.
@@ -226,14 +244,16 @@ export default async function ReportsPage({
                   <ul className="mt-1.5 space-y-1">
                     {reliable.slice(0, 2).map((f) => (
                       <li key={`hi-${f.category}-${f.factor}`}>
-                        <strong>{f.factor}</strong>: {formatPercent(f.severeRate)}{" "}
-                        severe ({pp(f.lift)}pp vs baseline)
+                        <strong>{f.factor}</strong>:{" "}
+                        {formatPercent(f.severeRate)} severe ({pp(f.lift)}pp vs
+                        baseline)
                       </li>
                     ))}
                     {reliable.slice(-1).map((f) => (
                       <li key={`lo-${f.category}-${f.factor}`}>
-                        <strong>{f.factor}</strong>: {formatPercent(f.severeRate)}{" "}
-                        severe ({pp(f.lift)}pp vs baseline)
+                        <strong>{f.factor}</strong>:{" "}
+                        {formatPercent(f.severeRate)} severe ({pp(f.lift)}pp vs
+                        baseline)
                       </li>
                     ))}
                   </ul>
@@ -251,7 +271,8 @@ export default async function ReportsPage({
                   <div className="min-w-0">
                     <CardTitle>Data exports</CardTitle>
                     <CardDescription>
-                      CSV files built from the figures above, for the same filters.
+                      CSV files built from the figures above, for the same
+                      filters.
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -291,7 +312,9 @@ export default async function ReportsPage({
                 <CardHeader>
                   <div className="min-w-0">
                     <CardTitle>Planned reports</CardTitle>
-                    <CardDescription>Not available yet — nothing to download.</CardDescription>
+                    <CardDescription>
+                      Not available yet — nothing to download.
+                    </CardDescription>
                   </div>
                 </CardHeader>
                 <CardBody>
@@ -302,7 +325,10 @@ export default async function ReportsPage({
                           <p className="text-[12px] font-medium text-navy-900">
                             {item.title}
                           </p>
-                          <Badge tone="neutral" className="shrink-0 whitespace-nowrap">
+                          <Badge
+                            tone="neutral"
+                            className="shrink-0 whitespace-nowrap"
+                          >
                             Planned
                           </Badge>
                         </div>

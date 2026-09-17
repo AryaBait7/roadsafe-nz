@@ -4,9 +4,42 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 17 (Reproducible CAS pipeline) — complete. Stage 18 (PostgreSQL + PostGIS) — in progress, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+**Stage 19 (Analytics layer) — complete. Stage 18 (PostgreSQL + PostGIS) — paused, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
 
-### Stage 18 — PostgreSQL + PostGIS (in progress, 2026-09-17)
+### Stage 19 — Analytics layer (done 2026-09-18)
+
+Stage 18 is paused, so this stage answers the questions the pages were already implying but could not support: *how sure are we?* and *is this condition doing the work, or the conditions it travels with?*
+
+**1. Uncertainty on every rate (frontend, filter-aware).** `lib/stats.ts` adds Wilson score intervals, used by `getSeverityLift` and `getHotspots`. Wilson rather than the textbook Wald interval, which collapses to zero width at 0% or 100% and misbehaves on the small counts a filtered view produces.
+- Each condition now carries a 95% interval and a `distinguishable` flag: false when the interval still contains the baseline.
+- Undistinguishable bars are drawn faded and labelled "not distinguishable" instead of a crash count; the table shows the interval.
+- Nationally only **Twilight (+0.22pp)** is flagged, which is the right answer: about 35,000 crashes cannot resolve a gap that small. Filtered to Nelson 2019, most conditions become indistinguishable, which is also correct.
+
+**2. Small-area shrinkage for hotspots (frontend, filter-aware).** A district with 150 crashes can show 15% severe on noise alone. `estimateShrinkagePrior` splits the observed spread of area rates into binomial noise and genuine variation (beta-binomial, method of moments), and `shrinkRate` reports a posterior-mean `adjustedSevereRate`.
+- The map now colours by the adjusted rate; the raw rate, its interval and the adjusted rate all appear in the table and the detail panel.
+- Verified: Auckland (237,434 crashes) moves by less than 0.1pp, while the smallest area moves substantially towards the pool.
+
+**3. Crude vs adjusted associations (Python, whole dataset).** `analyze_associations.py` fits one logistic regression with every condition entered together, and a crude model per condition, over **694,205 complete cases** (11,404 excluded for an unknown speed limit, light condition or road type).
+
+| Condition | Crude OR | Adjusted OR |
+|---|---|---|
+| 81–100 km/h | 2.18 | **2.48** |
+| Unsealed road | 1.95 | **1.11** |
+| Local road – open road | 2.18 | **1.18** |
+| State highway – open road | 1.47 | **0.81** |
+| Adverse weather | 0.83 | 0.77 |
+
+This is the finding: **the crude unsealed-road and open-road figures were mostly the speed environment those roads carry.** Speed is the only term that strengthens once the others are held fixed, and state highway – open road drops below the urban reference. McFadden pseudo R² is 0.026 — severity turns mostly on specifics CAS does not record, and the page says so.
+
+The page states the limits: association not cause, severity *given a crash was reported*, and that sidebar filters do not apply because the model is fitted once over the whole dataset (estimates from different slices would not be comparable).
+
+**Also:** the conditions CSV export gained interval and distinguishability columns; `run_pipeline.py` now runs the association step.
+
+**Tests:** 41 frontend (7 new statistics unit tests with textbook values, 4 new service tests against the real fixtures) and 19 pipeline tests. Lint, tsc and build are clean. Re-running the analysis after refactoring produced an identical fixture.
+
+**Not verified visually:** the preview pane rendered blank while Claude's window was behind another, so the new panel was checked through the served HTML and layout measurements (no overflow), not a screenshot.
+
+### Stage 18 — PostgreSQL + PostGIS (paused, 2026-09-17)
 
 #### Written (saved and committed; not yet run)
 
@@ -343,7 +376,8 @@ Seven requested changes, all against the existing components — no rebuild.
 | 16 | Frontend testing + performance | ✅ Complete |
 | 17 | Reproducible CAS pipeline | ✅ Complete |
 | 18 | PostgreSQL + PostGIS | 🟡 In progress: schema and loader written, untested (Docker down) |
-| 19–21 | Analytics, ML, explainability | 🔲 |
+| 19 | Analytics layer | ✅ Complete |
+| 20–21 | ML, explainability | ⏭️ Next |
 | 22 | Node/Express REST API | 🔲 |
 | 23 | Connect frontend to real API | 🔲 |
 | 24–27 | AWS, CI/CD, testing, portfolio docs | 🔲 |
@@ -585,6 +619,7 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 18 — PostgreSQL + PostGIS.** Restart Windows, then follow "Resume steps after restarting Windows" in the Stage 18 section above.
+1. **Stage 20 — severity model.** Baseline → logistic regression → random forest → XGBoost, on the chronological split, evaluated on the metrics the ML Insights page already lists. The Stage 19 regression is the inferential starting point, not the predictive model.
+2. **Stage 18 — PostgreSQL + PostGIS** remains blocked on Docker; see that section for options and resume steps.
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
 4. **Data items resolved in Stage 17.** Remaining for Stage 20: decide whether `object_involved` becomes a model feature, since it is known at report time but describes the crash itself.

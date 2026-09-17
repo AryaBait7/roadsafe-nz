@@ -3,7 +3,13 @@
 import "leaflet/dist/leaflet.css";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
-import { CircleMarker, MapContainer, TileLayer, Tooltip, useMap } from "react-leaflet";
+import {
+  CircleMarker,
+  MapContainer,
+  TileLayer,
+  Tooltip,
+  useMap,
+} from "react-leaflet";
 import { SEQUENTIAL_RAMP_DARK } from "@/lib/chart-theme";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import type { Hotspot } from "@/types";
@@ -130,14 +136,17 @@ export default function HotspotMap({
                 key={hotspot.id}
                 center={[hotspot.latitude, unwrapLongitude(hotspot.longitude)]}
                 // sqrt keeps circle *area* proportional to the count.
-                radius={
-                  4 + Math.sqrt(hotspot.crashCount / largest) * 22
-                }
+                radius={4 + Math.sqrt(hotspot.crashCount / largest) * 22}
                 pathOptions={{
                   color: isSelected ? "#ffc72c" : "transparent",
                   weight: isSelected ? 2 : 0,
                   fillColor:
-                    SEQUENTIAL_RAMP_DARK[Math.max(binFor(hotspot.severeRate), 0)],
+                    // Colour by the shrunk rate: a small district's raw rate
+                    // swings on a handful of crashes, and colour is exactly
+                    // where that noise would read as a finding.
+                    SEQUENTIAL_RAMP_DARK[
+                      Math.max(binFor(hotspot.adjustedSevereRate), 0)
+                    ],
                   fillOpacity: 0.78,
                 }}
                 eventHandlers={{
@@ -155,7 +164,8 @@ export default function HotspotMap({
                   <br />
                   <span className="text-[11px]">
                     {formatNumber(hotspot.crashCount)} crashes ·{" "}
-                    {formatPercent(hotspot.severeRate)} severe
+                    {formatPercent(hotspot.severeRate)} severe (adjusted{" "}
+                    {formatPercent(hotspot.adjustedSevereRate)})
                   </span>
                 </Tooltip>
               </CircleMarker>

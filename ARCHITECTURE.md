@@ -1,7 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
-Reflects the implementation as of Stage 17 (2026-09-17).
+Reflects the implementation as of Stage 19 (2026-09-18).
 
 ## Target architecture
 
@@ -78,6 +78,7 @@ fixture shape *is* the API contract.
 | crashService | `getTrends`, `getSeverityBreakdown`, `getSeverityTrends`, `getLightConditions`, `getRoadTypes`, `getRegionBreakdown`, `getHolidayBreakdown`, `getMapPoints`, `getMapGridDegrees` | `/api/crashes/*`, `/api/map/crashes` |
 | analyticsService | `getContributingFactors`, `getSeverityLift`, `getBaselineSevereRate`, `getHotspots`, `getHotspotDetail` | `/api/crashes/factors`, `/api/risk-factors`, `/api/hotspots[/{id}]` |
 | datasetService | `getDataDictionary` | `/api/dataset/dictionary` |
+| analyticsService | `getAdjustedAssociations` (whole dataset, not filtered) | `/api/risk-factors/adjusted` |
 | mlService | `getModelMetrics`, `getFeatureImportance` (null until Stage 20), `getTrainingDataProfile` (real) | `/api/ml/*` |
 
 `getSummaryComparison` returns the selected period and the equivalent
@@ -101,6 +102,7 @@ cas_crash_data_clean.csv (74 columns, gitignored)
 cas_crash_data_features.csv (82 columns, gitignored)
    |  validate features
    |  generate_frontend_fixtures.py (+ generate_data_dictionary.py, which reads DATA_DICTIONARY.md)
+   |  analyze_associations.py       logistic regression: crude + adjusted odds ratios
 frontend/src/data/fixtures/*.json (~7.4MB, committed; rewritten only when data changes)
    |  pipeline_run.json             snapshot sha256 + content fingerprint + step timings (committed)
    |  loadFixture() + services/dev/crashCube.ts
@@ -254,6 +256,20 @@ Tailwind v4, CSS-first: tokens in `@theme`, no `tailwind.config.ts`.
 - Text greys: `surface-500` is the lightest allowed on light surfaces (≥4.7:1); `surface-400` is for borders, icons and text on navy only.
 - Every chart has a table-view twin; this is required, not optional, because
   one severity colour sits below 3:1.
+
+## Where statistics live
+
+Two kinds, split by whether they depend on the filters:
+
+- **Filter-aware, in the service layer** (`lib/stats.ts`): Wilson intervals for
+  every rate, and empirical-Bayes shrinkage across the areas currently in
+  view. These must be recomputed per filter, so they cannot be precomputed,
+  and they move to SQL/the API with the services.
+- **Model-based, in the pipeline** (`analyze_associations.py` →
+  `adjusted-associations.json`): one logistic regression over the whole
+  dataset. Refitting per filter would produce a different model each time and
+  estimates that cannot be compared, so this is deliberately not filter-aware
+  and the page says so.
 
 ## Testing
 

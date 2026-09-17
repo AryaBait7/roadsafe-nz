@@ -896,7 +896,24 @@ Two runs gave the same fingerprint and changed no fixture.
 
 ---
 
-## 42. Verifying work instead of assuming it
+## 42. Confidence intervals, shrinkage and confounding
+
+**What**: three ideas, each fixing a way the earlier pages could mislead.
+- **Wilson intervals** put uncertainty on every rate. Wald (`p ± z·√(p(1−p)/n)`) collapses to zero width at 0% or 100%; Wilson does not.
+- **Empirical-Bayes shrinkage** treats area rates as drawn from a common distribution. The observed spread is split into binomial noise and genuine variation, and each area is pulled towards the pool in proportion to how little evidence it carries. Large areas barely move.
+- **Confounding**: unsealed road has a crude odds ratio of 1.95 and an adjusted one of 1.11, because unsealed roads are mostly rural and fast. Entering the conditions together estimates each holding the others fixed.
+
+**Interview questions**
+- Why use a Wilson interval instead of the normal approximation?
+- What does an odds ratio mean, and how does it differ from a rate ratio or a percentage-point difference?
+- What is confounding, and how does adjustment address it? Why does adjustment *not* make the result causal?
+- Why does shrinkage move a small area more than a large one?
+- The model's pseudo R² is 0.026. Why is that not a failure here?
+- Why is this regression separate from the Stage 20 prediction model?
+
+---
+
+## 43. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

@@ -1,5 +1,10 @@
 import { loadFixture } from "./fixtures";
 import {
+  estimateShrinkagePrior,
+  shrinkRate,
+  wilsonInterval,
+} from "@/lib/stats";
+import {
   groupBy,
   isSevere,
   queryCube,
@@ -15,6 +20,7 @@ import type {
   CrashSeverity,
   CrashTrendPoint,
   Hotspot,
+  AdjustedAssociations,
   HotspotDetail,
   ResponseMeta,
   SeverityBreakdownItem,
@@ -125,6 +131,35 @@ export async function getSeverityLift(
 
   const factors: SeverityLift[] = [];
 
+  /**
+   * One condition, with the uncertainty its sample size allows. A gap from
+   * the baseline is only reported as a difference when the interval excludes
+   * the baseline — otherwise a thin category's apparent lift is just noise.
+   */
+  const describe = (
+    factor: string,
+    category: string,
+    crashCount: number,
+    severeCount: number,
+    isMissingData: boolean,
+  ): SeverityLift => {
+    const severeRate = rate(severeCount, crashCount);
+    const severeRateInterval = wilsonInterval(severeCount, crashCount);
+
+    return {
+      factor,
+      category,
+      crashCount,
+      severeCount,
+      severeRate,
+      lift: severeRate - baseline,
+      severeRateInterval,
+      distinguishable:
+        baseline < severeRateInterval[0] || baseline > severeRateInterval[1],
+      isMissingData,
+    };
+  };
+
   const addDimension = (
     category: string,
     key: (row: (typeof rows)[number]) => string,
@@ -134,17 +169,10 @@ export async function getSeverityLift(
       if (crashCount === 0) continue;
 
       const severeCount = severeCrashes(group);
-      const severeRate = rate(severeCount, crashCount);
 
-      factors.push({
-        factor: value,
-        category,
-        crashCount,
-        severeCount,
-        severeRate,
-        lift: severeRate - baseline,
-        isMissingData: value === "Unknown",
-      });
+      factors.push(
+        describe(value, category, crashCount, severeCount, value === "Unknown"),
+      );
     }
   };
 
@@ -162,17 +190,8 @@ export async function getSeverityLift(
     if (crashCount === 0) continue;
 
     const severeCount = severeCrashes(group);
-    const severeRate = rate(severeCount, crashCount);
 
-    factors.push({
-      factor: value,
-      category: "Holiday period",
-      crashCount,
-      severeCount,
-      severeRate,
-      lift: severeRate - baseline,
-      isMissingData: false,
-    });
+    factors.push(describe(value, "Holiday period", crashCount, severeCount, false));
   }
 
   // Condition flags are counts of crashes where the condition was recorded,
@@ -190,17 +209,8 @@ export async function getSeverityLift(
     if (crashCount === 0) continue;
 
     const severeCount = sum(severeRows, pick);
-    const severeRate = rate(severeCount, crashCount);
 
-    factors.push({
-      factor,
-      category,
-      crashCount,
-      severeCount,
-      severeRate,
-      lift: severeRate - baseline,
-      isMissingData: false,
-    });
+    factors.push(describe(factor, category, crashCount, severeCount, false));
   }
 
   factors.sort((a, b) => b.lift - a.lift);
@@ -270,22 +280,33 @@ async function aggregateAreas(
     }
   }
 
-  const areas = [...totals]
-    .map(([index, counts]) => {
-      const area = data.areas[index];
+  const counted = [...totals]
+    .map(([index, counts]) => ({ area: data.areas[index], ...counts }))
+    .filter((row) => !filters.region || row.area.region === filters.region);
 
-      return {
-        id: area.id,
-        name: area.name,
-        region: area.region,
-        latitude: area.latitude,
-        longitude: area.longitude,
-        crashCount: counts.crashCount,
-        severeCount: counts.severeCount,
-        severeRate: rate(counts.severeCount, counts.crashCount),
-      };
-    })
-    .filter((area) => !filters.region || area.region === filters.region);
+  // The prior is estimated from the areas actually in view, excluding the
+  // Unknown bucket: it is not a place, and its rate would distort the pool.
+  const prior = estimateShrinkagePrior(
+    counted
+      .filter((row) => row.area.id !== UNKNOWN_AREA)
+      .map((row) => ({ successes: row.severeCount, trials: row.crashCount })),
+  );
+
+  const areas = counted.map((row) => ({
+    id: row.area.id,
+    name: row.area.name,
+    region: row.area.region,
+    latitude: row.area.latitude,
+    longitude: row.area.longitude,
+    crashCount: row.crashCount,
+    severeCount: row.severeCount,
+    severeRate: rate(row.severeCount, row.crashCount),
+    adjustedSevereRate: shrinkRate(
+      { successes: row.severeCount, trials: row.crashCount },
+      prior,
+    ),
+    severeRateInterval: wilsonInterval(row.severeCount, row.crashCount),
+  }));
 
   return { areas, meta };
 }
@@ -409,6 +430,12 @@ export async function getHotspotDetail(
         crashCount: total,
         severeCount: severeTotal,
         severeRate: rate(severeTotal, total),
+        // Reuse the ranking's prior so the detail view and the list agree.
+        // An area filtered out of the ranking has no pool to borrow from.
+        adjustedSevereRate:
+          ranking.data.find((hotspot) => hotspot.id === areaId)
+            ?.adjustedSevereRate ?? rate(severeTotal, total),
+        severeRateInterval: wilsonInterval(severeTotal, total),
       },
       severity,
       trend,
@@ -417,4 +444,20 @@ export async function getHotspotDetail(
     },
     meta,
   };
+}
+
+/**
+ * Crude and adjusted associations from one logistic regression fitted over
+ * the whole dataset by `analyze_associations.py`.
+ *
+ * Deliberately not filter-aware: refitting per filter would be a different
+ * model each time, and a model fitted on a slice cannot be compared with one
+ * fitted on another. The page says the filters do not apply here.
+ *
+ * Later: apiGet<AdjustedAssociations>("/api/risk-factors/adjusted")
+ */
+export async function getAdjustedAssociations(): Promise<
+  ApiResponse<AdjustedAssociations>
+> {
+  return loadFixture<ApiResponse<AdjustedAssociations>>("adjusted-associations");
 }

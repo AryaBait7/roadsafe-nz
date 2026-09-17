@@ -125,6 +125,13 @@ export interface SeverityLift {
   severeRate: number;
   /** severeRate minus baseline, in percentage points. */
   lift: number;
+  /** 95% Wilson interval for severeRate, as [low, high]. */
+  severeRateInterval: [number, number];
+  /**
+   * False when that interval contains the baseline: the gap is within what
+   * this many crashes could produce by chance, so it is not a finding.
+   */
+  distinguishable: boolean;
   /**
    * True when the category represents *absent information* rather than a
    * real condition — CAS's "Unknown" buckets. These produce some of the
@@ -193,6 +200,14 @@ export interface Hotspot {
   crashCount: number;
   severeCount: number;
   severeRate: number;
+  /**
+   * Severe rate pulled towards the national rate by how little evidence the
+   * area carries (empirical Bayes). A district with 150 crashes showing 15%
+   * is mostly noise; this is what to rank and colour by.
+   */
+  adjustedSevereRate: number;
+  /** 95% Wilson interval for the raw severeRate. */
+  severeRateInterval: [number, number];
 }
 
 /**
@@ -325,4 +340,34 @@ export interface DataDictionary {
   columnCount: number;
   sourceFile: string;
   fields: DataDictionaryField[];
+}
+
+/** One condition's association with severity, crude and adjusted. */
+export interface AssociationTerm {
+  factor: string;
+  category: string;
+  /** The level the odds ratio is measured against. */
+  reference: string;
+  crashCount: number;
+  severeCount: number;
+  severeRate: number;
+  /** One condition at a time. */
+  crude: { oddsRatio: number; interval: [number, number] };
+  /** Every condition in one model, so each holds the others fixed. */
+  adjusted: { oddsRatio: number; interval: [number, number] };
+}
+
+/** GET /api/risk-factors/adjusted — the whole dataset, not the filtered view. */
+export interface AdjustedAssociations {
+  model: string;
+  target: string;
+  baselineSevereRate: number;
+  pseudoR2: number;
+  coverage: {
+    totalRows: number;
+    modelledRows: number;
+    excludedRows: number;
+    reason: string;
+  };
+  terms: AssociationTerm[];
 }

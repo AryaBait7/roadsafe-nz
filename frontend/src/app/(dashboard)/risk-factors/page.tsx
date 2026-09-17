@@ -6,13 +6,18 @@ import { DataTable } from "@/components/charts/DataTable";
 import {
   Card,
   CardBody,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/Card";
 import { EmptyState } from "@/components/states/EmptyState";
 import { parseFilters } from "@/lib/filters";
 import { formatNumber, formatPercent } from "@/lib/formatters";
-import { getSeverityLift } from "@/services/analyticsService";
+import {
+  getAdjustedAssociations,
+  getSeverityLift,
+} from "@/services/analyticsService";
+import type { AdjustedAssociations } from "@/types";
 
 export const metadata = { title: "Risk Factors" };
 
@@ -27,7 +32,11 @@ export default async function RiskFactorsPage({
   searchParams,
 }: PageProps<"/risk-factors">) {
   const filters = parseFilters(await searchParams);
-  const { data } = await getSeverityLift(filters);
+  const [{ data }, associations] = await Promise.all([
+    getSeverityLift(filters),
+    getAdjustedAssociations(),
+  ]);
+  const adjusted = associations.data;
 
   // Two exclusions, for different reasons.
   //
@@ -67,7 +76,7 @@ export default async function RiskFactorsPage({
               <ChartPanel
                 className="xl:col-span-7"
                 title="Severity against the baseline"
-                description={`How each condition's serious-or-fatal rate compares with the overall ${formatPercent(data.baseline)}. Conditions with fewer than ${formatNumber(MIN_SAMPLE)} crashes are in the table only.`}
+                description={`How each condition's serious-or-fatal rate compares with the overall ${formatPercent(data.baseline)}. Conditions with fewer than ${formatNumber(MIN_SAMPLE)} crashes are in the table only; faded bars are within chance of the baseline (95% Wilson interval).`}
                 chart={
                   <DivergingBars data={charted} baseline={data.baseline} />
                 }
@@ -94,10 +103,18 @@ export default async function RiskFactorsPage({
                         cell: (row) => formatPercent(row.severeRate),
                       },
                       {
+                        header: "95% interval",
+                        numeric: true,
+                        cell: (row) =>
+                          `${formatPercent(row.severeRateInterval[0])}–${formatPercent(row.severeRateInterval[1])}`,
+                      },
+                      {
                         header: "vs baseline",
                         numeric: true,
                         cell: (row) =>
-                          `${row.lift >= 0 ? "+" : "−"}${(Math.abs(row.lift) * 100).toFixed(2)}pp`,
+                          row.distinguishable
+                            ? `${row.lift >= 0 ? "+" : "−"}${(Math.abs(row.lift) * 100).toFixed(2)}pp`
+                            : "not distinguishable",
                       },
                     ]}
                   />
@@ -118,17 +135,19 @@ export default async function RiskFactorsPage({
                       to be more serious — not that it made them so.
                     </p>
                     <p>
-                      Much of what appears here is likely standing in for
-                      speed. Open rural roads carry higher limits and longer
-                      emergency response times, and both push outcomes toward
-                      the severe end regardless of what else was recorded.
+                      Much of what appears here is likely standing in for speed.
+                      Open rural roads carry higher limits and longer emergency
+                      response times, and both push outcomes toward the severe
+                      end regardless of what else was recorded.
                     </p>
                   </CardBody>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Adverse weather looks safer, and isn&rsquo;t</CardTitle>
+                    <CardTitle>
+                      Adverse weather looks safer, and isn&rsquo;t
+                    </CardTitle>
                   </CardHeader>
                   <CardBody className="space-y-2.5 text-[11px] leading-relaxed text-surface-600">
                     <p>
@@ -140,11 +159,11 @@ export default async function RiskFactorsPage({
                       energy.
                     </p>
                     <p>
-                      It is emphatically not evidence that poor weather is
-                      safe. This page measures severity{" "}
+                      It is emphatically not evidence that poor weather is safe.
+                      This page measures severity{" "}
                       <em>given that a crash occurred</em> — it says nothing
-                      about how often crashes happen, and CAS contains no
-                      record of journeys that ended without incident.
+                      about how often crashes happen, and CAS contains no record
+                      of journeys that ended without incident.
                     </p>
                   </CardBody>
                 </Card>
@@ -222,9 +241,140 @@ export default async function RiskFactorsPage({
                 </CardBody>
               </Card>
             ) : null}
+            <Card>
+              <CardHeader>
+                <div className="min-w-0">
+                  <CardTitle>
+                    One condition at a time, or all of them together
+                  </CardTitle>
+                  <CardDescription>
+                    Conditions travel together: unsealed roads are mostly rural
+                    and fast. The crude column compares one condition against
+                    everything else; the adjusted column comes from a single
+                    logistic regression holding the other conditions fixed. An
+                    odds ratio above 1 means higher odds of a serious or fatal
+                    outcome than the reference level.
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardBody>
+                <DataTable
+                  caption="Crude and adjusted odds ratios for a serious or fatal outcome"
+                  rows={adjusted.terms}
+                  columns={[
+                    { header: "Condition", cell: (row) => row.factor },
+                    {
+                      header: "Compared with",
+                      cell: (row) => (
+                        <span className="text-surface-500">
+                          {row.reference}
+                        </span>
+                      ),
+                    },
+                    {
+                      header: "Crashes",
+                      numeric: true,
+                      cell: (row) => formatNumber(row.crashCount),
+                    },
+                    {
+                      header: "Crude odds ratio",
+                      numeric: true,
+                      cell: (row) => (
+                        <OddsRatio
+                          value={row.crude.oddsRatio}
+                          interval={row.crude.interval}
+                        />
+                      ),
+                    },
+                    {
+                      header: "Adjusted odds ratio",
+                      numeric: true,
+                      cell: (row) => (
+                        <OddsRatio
+                          value={row.adjusted.oddsRatio}
+                          interval={row.adjusted.interval}
+                        />
+                      ),
+                    },
+                  ]}
+                />
+
+                <div className="mt-3 grid gap-2 text-[11px] leading-relaxed text-surface-600 lg:grid-cols-2">
+                  <p>
+                    <span className="font-medium text-navy-900">
+                      What changes when the other conditions are held fixed.
+                    </span>{" "}
+                    Unsealed road falls from{" "}
+                    {formatOdds(
+                      termFor(adjusted, "Unsealed road")?.crude.oddsRatio,
+                    )}{" "}
+                    to{" "}
+                    {formatOdds(
+                      termFor(adjusted, "Unsealed road")?.adjusted.oddsRatio,
+                    )}
+                    , and state highway &ndash; open road from{" "}
+                    {formatOdds(
+                      termFor(adjusted, "State highway - open road")?.crude
+                        .oddsRatio,
+                    )}{" "}
+                    to{" "}
+                    {formatOdds(
+                      termFor(adjusted, "State highway - open road")?.adjusted
+                        .oddsRatio,
+                    )}
+                    , below the reference. Most of what the crude figures showed
+                    was the speed environment those roads carry &mdash; the one
+                    term that strengthens once the others are included.
+                  </p>
+                  <p>
+                    <span className="font-medium text-navy-900">Limits.</span>{" "}
+                    {adjusted.model}, fitted on{" "}
+                    {formatNumber(adjusted.coverage.modelledRows)} complete
+                    cases ({formatNumber(adjusted.coverage.excludedRows)}{" "}
+                    excluded: {adjusted.coverage.reason.toLowerCase()}). It
+                    describes association, not cause, and only severity{" "}
+                    <em>given a crash was reported</em>. The sidebar filters do
+                    not apply: the model is fitted once over the whole dataset,
+                    and estimates from different slices would not be comparable.
+                    It explains little of the variation overall (McFadden pseudo
+                    R&sup2; {adjusted.pseudoR2.toFixed(3)}), which is expected:
+                    severity turns mostly on specifics CAS does not record.
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
           </>
         )}
       </div>
     </>
   );
+}
+
+/** An odds ratio with its interval, so the estimate is never read as exact. */
+function OddsRatio({
+  value,
+  interval,
+}: {
+  value: number;
+  interval: [number, number];
+}) {
+  // An interval spanning 1 means even the direction is uncertain.
+  const clear = interval[0] > 1 || interval[1] < 1;
+
+  return (
+    <span className={clear ? undefined : "text-surface-500"}>
+      <span className="tabular font-medium">{value.toFixed(2)}</span>
+      <span className="tabular block text-[10px] text-surface-500">
+        {interval[0].toFixed(2)}&ndash;{interval[1].toFixed(2)}
+      </span>
+    </span>
+  );
+}
+
+function termFor(data: AdjustedAssociations, factor: string) {
+  return data.terms.find((term) => term.factor === factor);
+}
+
+function formatOdds(value: number | undefined) {
+  return value === undefined ? "—" : value.toFixed(2);
 }

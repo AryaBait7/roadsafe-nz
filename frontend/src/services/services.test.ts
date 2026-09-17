@@ -7,6 +7,7 @@ import {
   getUnmappedCrashCount,
 } from "./crashService";
 import {
+  getAdjustedAssociations,
   getHotspotDetail,
   getHotspots,
   getSeverityLift,
@@ -152,5 +153,76 @@ describe("data dictionary", () => {
     expect(excluded).toEqual(
       profile.data.leakageExcluded.map((l) => l.name).sort(),
     );
+  });
+});
+
+describe("uncertainty and adjustment (Stage 19)", () => {
+  it("every condition carries an interval that brackets its own rate", async () => {
+    const { data } = await getSeverityLift();
+
+    for (const factor of data.factors) {
+      const [low, high] = factor.severeRateInterval;
+      expect(low).toBeLessThanOrEqual(factor.severeRate);
+      expect(high).toBeGreaterThanOrEqual(factor.severeRate);
+      // "Distinguishable" must mean exactly "the interval misses the baseline".
+      expect(factor.distinguishable).toBe(
+        data.baseline < low || data.baseline > high,
+      );
+    }
+  });
+
+  it("keeps large clear differences and flags thin ones", async () => {
+    const { data } = await getSeverityLift();
+    const unsealed = data.factors.find((f) => f.factor === "Unsealed road");
+    expect(unsealed?.distinguishable).toBe(true);
+
+    // On a single year of one region, most conditions cannot be told apart
+    // from the baseline; the national view must not claim otherwise.
+    const slice = await getSeverityLift({
+      region: "Nelson Region",
+      yearFrom: 2019,
+      yearTo: 2019,
+    });
+    expect(slice.data.factors.some((f) => !f.distinguishable)).toBe(true);
+  });
+
+  it("pulls small areas towards the pooled rate, and leaves Auckland alone", async () => {
+    const { data } = await getHotspots();
+    const auckland = data[0];
+    expect(
+      Math.abs(auckland.adjustedSevereRate - auckland.severeRate),
+    ).toBeLessThan(0.001);
+
+    const smallest = [...data].sort((a, b) => a.crashCount - b.crashCount)[0];
+    const pooled =
+      data.reduce((sum, a) => sum + a.severeCount, 0) /
+      data.reduce((sum, a) => sum + a.crashCount, 0);
+    // The least-evidenced area moves further towards the pool than Auckland.
+    expect(Math.abs(smallest.adjustedSevereRate - pooled)).toBeLessThan(
+      Math.abs(smallest.severeRate - pooled),
+    );
+  });
+
+  it("adjusted associations show the confounding the page describes", async () => {
+    const { data, meta } = await getAdjustedAssociations();
+    expect(meta.source).toBe("real");
+    expect(data.coverage.modelledRows).toBe(694_205);
+
+    const unsealed = data.terms.find((t) => t.factor === "Unsealed road");
+    // Crude ~1.95 vs adjusted ~1.11: most of it is the roads it sits on.
+    expect(unsealed!.crude.oddsRatio).toBeGreaterThan(1.8);
+    expect(unsealed!.adjusted.oddsRatio).toBeLessThan(1.3);
+
+    const speed = data.terms.find((t) => t.factor === "81-100 km/h");
+    expect(speed!.adjusted.oddsRatio).toBeGreaterThan(speed!.crude.oddsRatio);
+
+    for (const term of data.terms) {
+      expect(term.adjusted.interval[0]).toBeLessThanOrEqual(
+        term.adjusted.oddsRatio,
+      );
+      expect(term.adjusted.interval[1]).toBeGreaterThanOrEqual(
+        term.adjusted.oddsRatio,
+      );
+    }
   });
 });
