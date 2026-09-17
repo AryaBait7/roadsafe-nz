@@ -14,10 +14,9 @@ CLEAN_PATH = Path(__file__).resolve().parent.parent / "data" / "processed" / "ca
 FEATURES_PATH = Path(__file__).resolve().parent.parent / "data" / "processed" / "cas_crash_data_features.csv"
 
 # The 12 columns that count how many of each vehicle type were involved.
-# Excludes the generic `vehicle` column (only populated for ~43% of rows,
-# looks like a legacy/duplicate field from an older CAS schema) and `train`
-# (grouped with roadside-object columns like `fence`/`ditch` in this
-# dataset, not with the vehicle-type columns).
+# Excludes `vehicle` and `train`: they belong to the object-struck block
+# (filled only for object-involved crashes, see clean_data.OBJECT_COLUMNS),
+# so they count things struck, not vehicles taking part in the crash.
 VEHICLE_TYPE_COLUMNS = [
     "bicycle", "bus", "carStationWagon", "moped", "motorcycle",
     "otherVehicleType", "schoolBus", "suv", "taxi", "truck",

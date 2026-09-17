@@ -29,6 +29,7 @@ import {
   getLightConditions,
   getMapGridDegrees,
   getMapPoints,
+  getUnmappedCrashCount,
   getRoadTypes,
   getSeverityBreakdown,
   getTrends,
@@ -57,6 +58,7 @@ export default async function DashboardPage({
     importance,
     mapPoints,
     gridDegrees,
+    unmapped,
   ] = await Promise.all([
     getSummaryComparison(filters),
     getSeverityBreakdown(filters),
@@ -68,6 +70,7 @@ export default async function DashboardPage({
     getFeatureImportance(),
     getMapPoints(filters),
     getMapGridDegrees(),
+    getUnmappedCrashCount(filters),
   ]);
 
   const summary = comparison.data.current;
@@ -257,7 +260,11 @@ export default async function DashboardPage({
               <div className="min-w-0">
                 <CardTitle>New Zealand crash hotspots</CardTitle>
                 <CardDescription>
-                  Density on a {gridDegrees}° grid. Click a cell for its figures.
+                  Density on a {gridDegrees}° grid. Click a cell for its
+                  figures.
+                  {unmapped > 0
+                    ? ` ${formatNumber(unmapped)} ${unmapped === 1 ? "crash" : "crashes"} without a usable location ${unmapped === 1 ? "is" : "are"} not shown.`
+                    : null}
                 </CardDescription>
               </div>
             </CardHeader>
@@ -360,8 +367,8 @@ export default async function DashboardPage({
             </CardHeader>
             <CardBody className="flex flex-1 flex-col justify-between gap-3">
               <p className="text-[11px] leading-relaxed text-surface-500">
-                Once trained, the classifier will estimate how severe a crash
-                is likely to be <em>given that a crash occurred</em>. It cannot
+                Once trained, the classifier will estimate how severe a crash is
+                likely to be <em>given that a crash occurred</em>. It cannot
                 predict whether a crash will happen: this dataset contains only
                 crashes, so it holds no examples of roads where nothing went
                 wrong.

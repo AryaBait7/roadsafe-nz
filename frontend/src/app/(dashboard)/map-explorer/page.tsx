@@ -2,11 +2,21 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { FilterSummary } from "@/components/layout/FilterSummary";
 import { CrashMapLoader } from "@/components/maps/CrashMapLoader";
 import { packPoints } from "@/lib/mapPack";
-import { Card, CardBody, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/Card";
 import { EmptyState } from "@/components/states/EmptyState";
 import { parseFilters } from "@/lib/filters";
 import { formatNumber } from "@/lib/formatters";
-import { getMapGridDegrees, getMapPoints } from "@/services/crashService";
+import {
+  getMapGridDegrees,
+  getMapPoints,
+  getUnmappedCrashCount,
+} from "@/services/crashService";
 
 export const metadata = { title: "Map Explorer" };
 
@@ -15,9 +25,10 @@ export default async function MapExplorerPage({
 }: PageProps<"/map-explorer">) {
   const filters = parseFilters(await searchParams);
 
-  const [points, gridDegrees] = await Promise.all([
+  const [points, gridDegrees, unmapped] = await Promise.all([
     getMapPoints(filters),
     getMapGridDegrees(),
+    getUnmappedCrashCount(filters),
   ]);
 
   const totalCrashes = points.data.reduce((sum, p) => sum + p.crashCount, 0);
@@ -47,6 +58,9 @@ export default async function MapExplorerPage({
                 {formatNumber(totalCrashes)} crashes across{" "}
                 {formatNumber(points.data.length)} cells. Click any cell for its
                 figures.
+                {unmapped > 0
+                  ? ` ${formatNumber(unmapped)} ${unmapped === 1 ? "crash has" : "crashes have"} no usable location and ${unmapped === 1 ? "is" : "are"} not shown.`
+                  : null}
               </CardDescription>
             </div>
           </CardHeader>

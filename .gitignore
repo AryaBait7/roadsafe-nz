@@ -3,6 +3,9 @@ data-pipeline/data/raw/*
 data-pipeline/data/processed/*
 !data-pipeline/data/raw/.gitkeep
 !data-pipeline/data/processed/.gitkeep
+# provenance: which snapshot produced the published figures
+!data-pipeline/data/raw/manifest.json
+!data-pipeline/data/processed/pipeline_run.json
 *.csv
 *.parquet
 data-pipeline/models/*

@@ -31,6 +31,8 @@ DERIVED = {
     "longitude",
     "latitude",
     "is_severe",
+    "object_involved",
+    "location_valid",
     "total_vehicles_involved",
     "adverse_weather",
     "is_unsealed_road",
@@ -79,7 +81,6 @@ GROUP_ORDER = [
     "Road & environment conditions",
     "Vehicle involvement",
     "Roadside objects struck",
-    "Dead / unusable columns",
     "Derived features",
 ]
 
@@ -142,9 +143,9 @@ def parse_dictionary() -> dict[str, dict[str, str]]:
                     {
                         "group": group,
                         "description": (
-                            "Count of this object struck in the crash. Part of a "
-                            "block missing for the same 57.3% of rows; whether "
-                            "missing means 'not struck' is not yet resolved."
+                            "Count of this object struck in the crash. Blank in "
+                            "the raw export when no object was involved; "
+                            "cleaning records that as 0."
                         ),
                     },
                 )
@@ -188,8 +189,10 @@ def profile(df: pd.DataFrame, docs: dict[str, dict[str, str]]) -> list[dict]:
         if values.empty:
             example = None
         elif distinct == len(values):
-            # Every value unique (identifiers): the mode would be arbitrary.
-            example = format_value(values.iloc[0], kind)
+            # Every value unique (identifiers): the mode would be arbitrary,
+            # and the first row changes whenever NZTA reorders an export.
+            # The smallest value is stable.
+            example = format_value(values.min(), kind)
         else:
             example = format_value(values.mode().iloc[0], kind)
 

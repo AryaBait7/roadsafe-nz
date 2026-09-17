@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { getSummary, getSummaryComparison } from "./dashboardService";
-import { getMapPoints, getSeverityBreakdown, getTrends } from "./crashService";
+import {
+  getMapPoints,
+  getSeverityBreakdown,
+  getTrends,
+  getUnmappedCrashCount,
+} from "./crashService";
 import {
   getHotspotDetail,
   getHotspots,
   getSeverityLift,
+  getUnattributedCrashCount,
 } from "./analyticsService";
 import { getModelMetrics, getTrainingDataProfile } from "./mlService";
 import { getDataDictionary } from "./datasetService";
@@ -34,17 +40,28 @@ describe("national totals reconcile with the CAS dataset", () => {
   });
 
   it("every independent path re-totals to the same crash count", async () => {
-    const [severity, trends, map, hotspots] = await Promise.all([
+    const [severity, trends, map, unmapped, hotspots] = await Promise.all([
       getSeverityBreakdown(),
       getTrends(),
       getMapPoints(),
+      getUnmappedCrashCount(),
       getHotspots(),
     ]);
 
     expect(add(severity.data.map((s) => s.count))).toBe(TOTAL);
     expect(add(trends.data.map((t) => t.totalCrashes))).toBe(TOTAL);
-    expect(add(map.data.map((p) => p.crashCount))).toBe(TOTAL);
-    expect(add(hotspots.data.map((h) => h.crashCount))).toBe(TOTAL);
+    // One 2024 Chatham Islands crash carries placeholder coordinates in the
+    // ocean; it is counted everywhere except on the map, which says so.
+    expect(unmapped).toBe(1);
+    expect(await getUnmappedCrashCount({ yearTo: 2023 })).toBe(0);
+    expect(add(map.data.map((p) => p.crashCount)) + unmapped).toBe(TOTAL);
+    // 140 crashes have no recorded territorial authority; they are left out
+    // of the ranking (not a place) and reported separately.
+    const unattributed = await getUnattributedCrashCount();
+    expect(unattributed).toBe(140);
+    expect(add(hotspots.data.map((h) => h.crashCount)) + unattributed).toBe(
+      TOTAL,
+    );
   });
 });
 
@@ -77,7 +94,8 @@ describe("filtering", () => {
 describe("analytics", () => {
   it("Auckland is the largest hotspot", async () => {
     const { data } = await getHotspots();
-    expect(data).toHaveLength(68);
+    expect(data).toHaveLength(67);
+    expect(data.map((h) => h.id)).not.toContain("Unknown");
     expect(data[0]).toMatchObject({
       name: "Auckland",
       crashCount: 237_434,
@@ -122,7 +140,9 @@ describe("data dictionary", () => {
       getDataDictionary(),
       getTrainingDataProfile(),
     ]);
+    // 72 raw columns, minus 3 dropped in cleaning, plus 13 derived.
     expect(data.fields).toHaveLength(82);
+    expect(data.fields.map((f) => f.name)).not.toContain("intersection");
     expect(data.fields.filter((f) => f.description === null)).toEqual([]);
 
     const excluded = data.fields

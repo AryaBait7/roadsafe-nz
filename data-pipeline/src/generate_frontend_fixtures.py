@@ -69,6 +69,7 @@ USED_COLUMNS = [
     "is_uncontrolled_intersection",
     "longitude",
     "latitude",
+    "location_valid",
 ]
 
 UNKNOWN = "Unknown"
@@ -260,6 +261,9 @@ def build_map_cells(df: pd.DataFrame) -> dict:
     and it is what lets the map honour the region filter. Not repeating the
     coordinates on every row makes the file smaller despite the addition.
     """
+    unmappable = df[~df["location_valid"]]
+    df = df[df["location_valid"]]
+
     cells = df.assign(
         cellLat=(df["latitude"] / GRID_DEGREES).round() * GRID_DEGREES,
         cellLon=(df["longitude"] / GRID_DEGREES).round() * GRID_DEGREES,
@@ -298,6 +302,14 @@ def build_map_cells(df: pd.DataFrame) -> dict:
             for row in cell_region.itertuples(index=False)
         ],
         "regions": regions,
+        # Crashes with no usable location, so the map can say how many it
+        # leaves out: [crashYear, region, crashCount].
+        "unmapped": [
+            [int(year), str(region), int(count)]
+            for (year, region), count in unmappable.groupby(
+                ["crashYear", "region"], observed=True
+            ).size().items()
+        ],
         "columns": ["cellIndex", "crashYear", "crashCount", "severeCount"],
         "rows": [
             [
@@ -358,6 +370,18 @@ def envelope(data: object, note: str) -> dict:
 def write_fixture(name: str, payload: dict) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     path = OUTPUT_DIR / f"{name}.json"
+
+    # Fixtures are committed and minified onto one line, so rewriting one
+    # whose data has not changed (only `generatedAt` would differ) adds
+    # megabytes to git history for nothing. Keep the existing file instead.
+    if path.exists():
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        same_meta = {k: v for k, v in existing.get("meta", {}).items() if k != "generatedAt"} == {
+            k: v for k, v in payload["meta"].items() if k != "generatedAt"
+        }
+        if existing.get("data") == payload["data"] and same_meta:
+            print(f"  {name}.json  unchanged")
+            return
 
     with path.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, ensure_ascii=False, separators=(",", ":"))

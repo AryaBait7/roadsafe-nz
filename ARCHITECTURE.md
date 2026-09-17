@@ -1,7 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
-Reflects the implementation as of Stage 16 (2026-09-17).
+Reflects the implementation as of Stage 17 (2026-09-17).
 
 ## Target architecture
 
@@ -88,21 +88,40 @@ measures each condition against the baseline and flags "Unknown" buckets with
 ## Data flow, end to end (today)
 
 ```
-cas_crash_data.csv (191MB, gitignored)
-   |  clean_data.py                 fix disguised "Null" (8 cols), NZTM2000 -> WGS84, is_severe
-cas_crash_data_clean.csv (269MB, gitignored)
+NZTA open data portal (ArcGIS Hub item 8d684f18…)
+   |  download_data.py              stream to .part, then manifest.json (sha256, rows, bytes)
+cas_crash_data.csv (199MB, gitignored; manifest committed)
+   |  validate raw                  row count, unique OBJECTID, known severities
+   |  clean_data.py                 "Null" strings, object block → 0 + object_involved,
+   |                                pedestrian → 0, NZTM → WGS84, location_valid,
+   |                                drop empty columns, is_severe
+cas_crash_data_clean.csv (73 columns, gitignored)
+   |  validate clean
    |  feature_engineering.py        vehicle counts, condition flags, hazard score, speed bins
-cas_crash_data_features.csv (299MB, gitignored)
-   |  generate_frontend_fixtures.py     (+ generate_data_dictionary.py, which also reads DATA_DICTIONARY.md)
-frontend/src/data/fixtures/*.json (~7.4MB, committed)
+cas_crash_data_features.csv (81 columns, gitignored)
+   |  validate features
+   |  generate_frontend_fixtures.py (+ generate_data_dictionary.py, which reads DATA_DICTIONARY.md)
+frontend/src/data/fixtures/*.json (~7.4MB, committed; rewritten only when data changes)
+   |  pipeline_run.json             snapshot sha256 + content fingerprint + step timings (committed)
    |  loadFixture() + services/dev/crashCube.ts
 services
    |
 Server Components -> HTML (+ client components for charts, maps, filters)
 ```
 
-The app runs from a fresh clone without the 191MB download; regenerating
-fixtures requires it.
+The app runs from a fresh clone without the download. `python src/run_pipeline.py`
+rebuilds everything from the pinned snapshot, downloading it if it is absent,
+and verifies the file against its manifest.
+
+**Snapshot identity.** NZTA's exports reorder rows and renumber `OBJECTID`,
+so a file hash changes even when the data does not. The run record also
+stores an order-independent content fingerprint. `OBJECTID` is a row number,
+not a crash key: the database load (Stage 18) needs its own surrogate key.
+
+**Crashes the map and ranking leave out.** One crash has no usable location
+(`location_valid = false`), and 140 have no recorded territorial authority.
+They count in every total; the map and hotspot pages state how many they
+exclude (`getUnmappedCrashCount`, `getUnattributedCrashCount`).
 
 ## The fixtures
 

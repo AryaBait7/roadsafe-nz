@@ -16,6 +16,7 @@ import type {
   CrashTrendPoint,
   Hotspot,
   HotspotDetail,
+  ResponseMeta,
   SeverityBreakdownItem,
   SeverityLift,
   SeverityLiftReport,
@@ -216,7 +217,10 @@ export async function getBaselineSevereRate(
 ): Promise<number> {
   const { rows } = await queryCube(filters);
   const total = totalCrashes(rows);
-  return rate(sum(rows, (row) => (isSevere(row) ? row.crashCount : 0)), total);
+  return rate(
+    sum(rows, (row) => (isSevere(row) ? row.crashCount : 0)),
+    total,
+  );
 }
 
 interface HotspotFixture {
@@ -231,19 +235,15 @@ interface HotspotFixture {
   rows: (string | number)[][];
 }
 
-/**
- * Crash concentrations by territorial authority.
- *
- * Counts are per (area, year, severity) so region, year and severity filters
- * all apply. Road type and speed environment are not carried at this grain
- * and are ignored — the PostGIS query will support them.
- */
-export async function getHotspots(
-  filters: CrashFilters = {},
-): Promise<ApiResponse<Hotspot[]>> {
-  const { data, meta } = await loadFixture<ApiResponse<HotspotFixture>>(
-    "hotspots",
-  );
+/** CAS's bucket for crashes with no recorded territorial authority. */
+const UNKNOWN_AREA = "Unknown";
+
+/** Per-area totals under the filters, including the Unknown bucket. */
+async function aggregateAreas(
+  filters: CrashFilters,
+): Promise<{ areas: Hotspot[]; meta: ResponseMeta }> {
+  const { data, meta } =
+    await loadFixture<ApiResponse<HotspotFixture>>("hotspots");
   const at = Object.fromEntries(data.columns.map((name, i) => [name, i]));
 
   const totals = new Map<number, { crashCount: number; severeCount: number }>();
@@ -270,7 +270,7 @@ export async function getHotspots(
     }
   }
 
-  const hotspots = [...totals]
+  const areas = [...totals]
     .map(([index, counts]) => {
       const area = data.areas[index];
 
@@ -285,10 +285,44 @@ export async function getHotspots(
         severeRate: rate(counts.severeCount, counts.crashCount),
       };
     })
-    .filter((hotspot) => !filters.region || hotspot.region === filters.region)
-    .sort((a, b) => b.crashCount - a.crashCount);
+    .filter((area) => !filters.region || area.region === filters.region);
 
-  return { data: hotspots, meta };
+  return { areas, meta };
+}
+
+/**
+ * Crash concentrations by territorial authority.
+ *
+ * Counts are per (area, year, severity) so region, year and severity filters
+ * all apply. Road type and speed environment are not carried at this grain
+ * and are ignored — the PostGIS query will support them.
+ *
+ * The Unknown bucket is left out: it is absent information, not a place, and
+ * its "centroid" is an average of crashes scattered across the country.
+ * `getUnattributedCrashCount` reports its size instead.
+ */
+export async function getHotspots(
+  filters: CrashFilters = {},
+): Promise<ApiResponse<Hotspot[]>> {
+  const { areas, meta } = await aggregateAreas(filters);
+
+  return {
+    data: areas
+      .filter((area) => area.id !== UNKNOWN_AREA)
+      .sort((a, b) => b.crashCount - a.crashCount),
+    meta,
+  };
+}
+
+/**
+ * Crashes matching the filters that have no recorded territorial authority,
+ * so the hotspot ranking can say how many it does not cover.
+ */
+export async function getUnattributedCrashCount(
+  filters: CrashFilters = {},
+): Promise<number> {
+  const { areas } = await aggregateAreas(filters);
+  return areas.find((area) => area.id === UNKNOWN_AREA)?.crashCount ?? 0;
 }
 
 /**

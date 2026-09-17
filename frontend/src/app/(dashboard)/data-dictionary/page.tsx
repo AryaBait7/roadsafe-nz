@@ -78,19 +78,23 @@ export default async function DataDictionaryPage() {
         <div className="grid grid-cols-1 gap-3 text-[11px] leading-relaxed text-surface-700 lg:grid-cols-3">
           <Card>
             <CardBody>
-              <p className="font-semibold text-navy-900">Missing is not always a gap</p>
+              <p className="font-semibold text-navy-900">
+                Missing is not always a gap
+              </p>
               <p className="mt-1">
                 <code>holiday</code> is 94.5% empty because most crashes are not
-                on a holiday, and <code>pedestrian</code> is filled only when one
-                was involved. The roadside-object block is empty for the same
-                57.3% of rows; whether that means &ldquo;not struck&rdquo; is
-                still unresolved.
+                on a holiday. In the raw export, <code>pedestrian</code> and the
+                object-struck columns are blank unless one was involved;
+                cleaning records those blanks as 0, keeping the object case in{" "}
+                <code>object_involved</code> (no object in 57% of crashes).
               </p>
             </CardBody>
           </Card>
           <Card>
             <CardBody>
-              <p className="font-semibold text-navy-900">What the model may use</p>
+              <p className="font-semibold text-navy-900">
+                What the model may use
+              </p>
               <p className="mt-1">
                 No model has been trained yet. &ldquo;Candidate&rdquo; marks
                 planned inputs; &ldquo;Excluded&rdquo; marks columns that encode
@@ -101,7 +105,9 @@ export default async function DataDictionaryPage() {
           </Card>
           <Card>
             <CardBody>
-              <p className="font-semibold text-navy-900">What CAS does not record</p>
+              <p className="font-semibold text-navy-900">
+                What CAS does not record
+              </p>
               <p className="mt-1">
                 There is no date, month, weekday or time of day — only the year
                 — and no recorded cause. Every relationship shown elsewhere is

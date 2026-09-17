@@ -208,6 +208,8 @@ interface MapCellFixture {
   /** [latitude, longitude, regionIndex] per cell. */
   cells: number[][];
   regions: string[];
+  /** Crashes with no usable location: [crashYear, region, crashCount]. */
+  unmapped: [number, string, number][];
   columns: string[];
   rows: number[][];
 }
@@ -224,9 +226,8 @@ interface MapCellFixture {
 export async function getMapPoints(
   filters: CrashFilters = {},
 ): Promise<ApiResponse<MapCrashPoint[]>> {
-  const { data, meta } = await loadFixture<ApiResponse<MapCellFixture>>(
-    "map-cells",
-  );
+  const { data, meta } =
+    await loadFixture<ApiResponse<MapCellFixture>>("map-cells");
   const at = Object.fromEntries(data.columns.map((name, i) => [name, i]));
 
   // Year and region are honoured. Road type, speed environment and severity
@@ -266,6 +267,26 @@ export async function getMapPoints(
   }
 
   return { data: points, meta };
+}
+
+/**
+ * How many crashes matching the map's filters (year and region) have no
+ * usable location and are therefore absent from the grid, so the map can
+ * say so instead of silently under-counting.
+ *
+ * Later: returned alongside the cells by /api/map/crashes.
+ */
+export async function getUnmappedCrashCount(
+  filters: CrashFilters = {},
+): Promise<number> {
+  const { data } = await loadFixture<ApiResponse<MapCellFixture>>("map-cells");
+
+  return data.unmapped.reduce((sum, [year, region, count]) => {
+    if (filters.yearFrom !== undefined && year < filters.yearFrom) return sum;
+    if (filters.yearTo !== undefined && year > filters.yearTo) return sum;
+    if (filters.region && region !== filters.region) return sum;
+    return sum + count;
+  }, 0);
 }
 
 /** Grid resolution, so the map can draw cells at their true size. */

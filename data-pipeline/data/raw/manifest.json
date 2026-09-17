@@ -1,0 +1,12 @@
+{
+  "source": "Waka Kotahi NZ Transport Agency, Crash Analysis System (CAS)",
+  "datasetPage": "https://opendata-nzta.opendata.arcgis.com/datasets/NZTA::crash-analysis-system-cas-data-1/",
+  "itemId": "8d684f1841fa4dbea6afaefc8a1ba0fc",
+  "downloadUrl": "https://opendata-nzta.opendata.arcgis.com/api/download/v1/items/8d684f1841fa4dbea6afaefc8a1ba0fc/csv?layers=0",
+  "sourceLastModified": "Sat, 12 Sep 2026 21:12:23 GMT",
+  "retrievedAt": "2026-09-17T07:22:38+00:00",
+  "file": "cas_crash_data.csv",
+  "bytes": 199339426,
+  "rows": 705609,
+  "sha256": "19578b43e9a23cc674bcec14f319c6a65e13fe0c5c2fbbe619d435708391cd7f"
+}

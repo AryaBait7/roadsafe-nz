@@ -1,8 +1,10 @@
 # RoadSafe NZ — Data Dictionary
 
-Covers the NZTA Crash Analysis System (CAS) dataset as downloaded from Waka Kotahi's open data portal: **705,609 rows × 72 raw columns**. All missing/unique counts below are measured directly from `data-pipeline/data/processed/cas_crash_data_clean.csv` (after the Null-string fix and reprojection — see [DECISIONS.md](DECISIONS.md)), not estimated.
+Covers the NZTA Crash Analysis System (CAS) dataset as downloaded from Waka Kotahi's open data portal: **705,609 rows × 72 raw columns** (snapshot pinned in `data-pipeline/data/raw/manifest.json`). Counts below were measured from the processed data. The Data Dictionary page re-measures every column on each pipeline run, so where this file and the page disagree on a number, the page is current.
 
-**Important caveat**: descriptions here are inferred from column names, observed values, and how CAS is generally known to be structured — this has not been cross-checked against NZTA's own published CAS data dictionary (if/when we get access to it, this file should be reconciled against it). Treat "Meaning" as our working understanding, not an authoritative NZTA definition. Do not add a column to this file, or to any model, without it actually existing in the dataset we've inspected.
+**Descriptions in this file are the source for the Data Dictionary page** (`generate_data_dictionary.py` parses the tables below).
+
+**Important caveat**: descriptions here are inferred from column names, observed values, and NZTA's CAS user guide where it covers a field. They have not been fully reconciled against NZTA's published field descriptions. Treat "Meaning" as our working understanding, not an authoritative NZTA definition. Do not add a column to this file, or to any model, without it actually existing in the dataset we've inspected.
 
 ## How to read the tables
 
@@ -16,10 +18,10 @@ Covers the NZTA Crash Analysis System (CAS) dataset as downloaded from Waka Kota
 
 | Column | Type | Missing % | Unique | Meaning |
 |---|---|---|---|---|
-| `OBJECTID` | int | 0.0 | 705,609 | Unique crash record ID. Verified no duplicates (0 duplicate values). |
+| `OBJECTID` | int | 0.0 | 705,609 | ArcGIS row number, unique within one export. **Not a stable crash ID**: two exports of identical data renumbered the same crashes, so never join or deduplicate on it across snapshots. |
 | `X`, `Y` | float | 0.0 | ~412k / ~439k | Crash coordinates in NZTM2000 (EPSG:2193, meters). Source for the derived `longitude`/`latitude`. |
 | `longitude`, `latitude` *(derived)* | float | 0.0 | ~537k | WGS84 lon/lat, reprojected from `X`/`Y` via `pyproj` in `clean_data.py`. |
-| `region` | str | 0.4 | 16 | NZ regional council area (e.g. "Auckland Region", "Otago Region"). |
+| `region` | str | 0.4 | 16 | NZ regional council area (e.g. "Auckland Region", "Otago Region"), as coded by CAS. Note CAS files Chatham Islands crashes under Manawatū-Whanganui (131) and Wellington (5), although the islands belong to neither. |
 | `tlaId`, `tlaName` | float / str | 0.0 | 67 | Territorial Local Authority (district/city council) ID and name. |
 | `areaUnitID`, `meshblockId` | float | 0.0 | 1,873 / 39,584 | Stats NZ statistical area / meshblock identifiers for the crash location. |
 | `crashLocation1`, `crashLocation2` | str | 0.0 / 0.3 | 35,917 / 51,568 | Free-text road name(s) at the crash site — `crashLocation1` is the primary road, `crashLocation2` the intersecting road where relevant. High cardinality; likely too sparse/noisy to use directly as a categorical feature without grouping. |
@@ -71,24 +73,32 @@ All of the following are counts of that vehicle type involved in the crash (0, 1
 
 | Column | Meaning |
 |---|---|
-| `bicycle`, `bus`, `carStationWagon`, `moped`, `motorcycle`, `otherVehicleType`, `schoolBus`, `suv`, `taxi`, `truck`, `unknownVehicleType`, `vanOrUtility` | Count of that vehicle type involved. Summed into the derived `total_vehicles_involved` feature (excludes `vehicle` and `train`, see below). |
-| `vehicle` | 57.3% missing. Appears to be a legacy/generic vehicle-count field from an older CAS schema, largely superseded by the specific vehicle-type columns above — excluded from `total_vehicles_involved` to avoid double-counting. |
-| `pedestrian` | 96.6% missing — non-null only when a pedestrian was involved (values 1–7, never 0), unlike the vehicle columns which include explicit 0s. |
-| `train` | 57.3% missing, values `{0, 1}` only. Grouped here in the raw schema with vehicle-type columns by name, but conceptually closer to a roadside hazard (level-crossing collision) than a "vehicle involved" — excluded from `total_vehicles_involved` (see feature_engineering.py). |
+| `bicycle`, `bus`, `carStationWagon`, `moped`, `motorcycle`, `otherVehicleType`, `schoolBus`, `suv`, `taxi`, `truck`, `unknownVehicleType`, `vanOrUtility` | Count of that vehicle type involved. Summed into the derived `total_vehicles_involved` feature. |
+| `pedestrian` | Number of pedestrians involved. Blank in 96.6% of raw rows and never 0 when filled, so cleaning treats a blank as 0 (the pipeline stops if explicit zeros ever appear). |
 
 ## Roadside objects struck (counts per crash)
 
-This entire block of 21 columns is missing for the exact same 57.3% of rows (403,996 rows). Confirmed this is **not** a mid-history schema change (populated across the full 2006–2026 range) — working theory is NaN means "not struck," functionally 0, rather than "not recorded." **Not yet resolved** — see DECISIONS.md #5.
+In the raw data these 23 columns (the 21 below plus `vehicle` and `train`) are blank together on the same 57.3% of rows (403,996), never partially. **Resolved in Stage 17: a blank means nothing was struck, and cleaning fills it with 0.** The evidence:
+
+- NZTA's CAS user guide notes that filtering on any object shows only crashes where an object was involved, i.e. the block is recorded only for object-involved crashes.
+- Where the block is filled, 95.9% of rows record at least one strike.
+- It is filled more often for fatal (53%) and open-road (56%) crashes, where hitting trees, poles and fences is common.
+
+The fact that the block was filled is kept as the derived `object_involved` flag.
+
+| Column | Meaning |
+|---|---|
+| `vehicle` | Number of times a vehicle was struck as an object. Part of the object block, so excluded from `total_vehicles_involved` to avoid double-counting. |
+| `train` | Whether a train was struck (0/1). Part of the object block. |
+
+Each of the following is the count of that object struck in the crash:
+
 
 `bridge`, `cliffBank`, `debris`, `ditch`, `fence`, `guardRail`, `houseOrBuilding`, `kerb`, `objectThrownOrDropped`, `otherObject`, `overBank`, `parkedVehicle`, `phoneBoxEtc`, `postOrPole`, `roadworks`, `slipOrFlood`, `strayAnimal`, `trafficIsland`, `trafficSign`, `tree`, `waterRiver`
 
-## Dead / unusable columns
+## Dropped during cleaning
 
-| Column | Missing % | Status |
-|---|---|---|
-| `intersection` | 100.0 | Zero non-null values across all 705,609 rows. Not yet dropped from `clean_data.py` — flagged for the next edit. |
-| `crashRoadSideRoad` | 100.0 | Same as above. |
-| `advisorySpeed` | 96% (in raw data) | Already dropped in `clean_data.py` — not present in the processed files. |
+Not present in the processed data. `advisorySpeed` was 96% blank in the raw export. `intersection` and `crashRoadSideRoad` were blank in all 705,609 rows; `clean_data.py` checks they are still empty before dropping them and stops if NZTA ever populates them.
 
 ## Derived features (Phase 3 — `feature_engineering.py`)
 
@@ -100,6 +110,8 @@ This entire block of 21 columns is missing for the exact same 57.3% of rows (403
 | `is_hill_road` | bool | `flatHill` == Hill Road. |
 | `is_low_light` | bool | `light` in {Dark, Twilight}. |
 | `is_uncontrolled_intersection` | bool | `trafficControl` == Nil. |
+| `object_involved` | bool | True when the raw object-struck block was filled, i.e. an object was involved in the crash (42.7% of crashes). Added in `clean_data.py`. |
+| `location_valid` | bool | False when the coordinates are not a real place: outside New Zealand, or the exact (-47.5, 179.0) placeholder found on one 2024 Chatham Islands crash. Those crashes keep blank `longitude`/`latitude`, count in every total, and are left off the map. Added in `clean_data.py`. |
 | `road_hazard_score` | int (0–5) | Sum of the 5 boolean flags above. Confirmed to track `is_severe` cleanly: 5.7% (score 0) up to 10.0% (score 5). |
 | `speed_limit_binned` | categorical | `speedLimit` bucketed into `low_<=50`, `medium_51-80`, `high_81-100`, `very_high_>100`. |
 

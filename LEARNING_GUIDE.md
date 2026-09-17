@@ -876,7 +876,27 @@ print dialog with print-only styles.
 
 ---
 
-## 41. Verifying work instead of assuming it
+## 41. Reproducible data pipelines
+
+**What**: a pipeline is reproducible when anyone can rebuild the published outputs from a pinned input and prove it. Here that means:
+- a download manifest with a SHA-256;
+- an order-independent content fingerprint, because NZTA reorders rows between exports;
+- validation gates between steps that stop the run;
+- an idempotent writer that leaves unchanged outputs alone;
+- a run record tying outputs to the snapshot.
+
+Two runs gave the same fingerprint and changed no fixture.
+
+**Interview questions**
+- Why wasn't a file hash enough to tell whether the data changed?
+- What is a surrogate key, and why will the database need one here?
+- How did you decide that blank object fields mean zero, and what stops that assumption silently breaking later?
+- Why fail the pipeline on a data-quality check instead of logging a warning?
+- A summarising tool quoted the NZTA guide to you. How did you check it? (read the source document: the quotes were invented)
+
+---
+
+## 42. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

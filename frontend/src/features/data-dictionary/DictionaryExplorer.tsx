@@ -215,7 +215,7 @@ export function DictionaryExplorer({
             came for. */}
           <div className="space-y-2 lg:hidden">
             {[...byGroup].map(([name, rows]) => (
-              // Collapsed by default: 82 open cards run past 16,000px on a
+              // Collapsed by default: 80+ open cards run past 16,000px on a
               // phone. Any search or filter opens every group, and `key`
               // remounts so the default is re-applied when that changes.
               <details

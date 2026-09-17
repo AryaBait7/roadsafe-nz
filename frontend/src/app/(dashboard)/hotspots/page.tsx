@@ -17,7 +17,11 @@ import { EmptyState } from "@/components/states/EmptyState";
 import { parseFilters, toSearchParams } from "@/lib/filters";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import { SEVERITY_COLORS } from "@/lib/chart-theme";
-import { getHotspotDetail, getHotspots } from "@/services/analyticsService";
+import {
+  getHotspotDetail,
+  getHotspots,
+  getUnattributedCrashCount,
+} from "@/services/analyticsService";
 import type { CrashFilters, Hotspot } from "@/types";
 
 export const metadata = { title: "Hotspots" };
@@ -108,11 +112,10 @@ export default async function HotspotsPage({
   const rawArea = Array.isArray(params.area) ? params.area[0] : params.area;
   const selectedId = rawArea?.trim() || undefined;
 
-  const [hotspots, detail] = await Promise.all([
+  const [hotspots, unattributed, detail] = await Promise.all([
     getHotspots(filters),
-    selectedId
-      ? getHotspotDetail(selectedId, filters)
-      : Promise.resolve(null),
+    getUnattributedCrashCount(filters),
+    selectedId ? getHotspotDetail(selectedId, filters) : Promise.resolve(null),
   ]);
 
   const areas = hotspots.data.filter((hotspot) => hotspot.crashCount > 0);
@@ -122,7 +125,10 @@ export default async function HotspotsPage({
   // is much worse. Stating both keeps the ranking honest.
   const nationalSevere =
     areas.reduce((sum, a) => sum + a.severeCount, 0) /
-    Math.max(areas.reduce((sum, a) => sum + a.crashCount, 0), 1);
+    Math.max(
+      areas.reduce((sum, a) => sum + a.crashCount, 0),
+      1,
+    );
   const sortedRates = [...areas].map((a) => a.severeRate).sort((a, b) => a - b);
   const medianAreaRate = sortedRates.length
     ? sortedRates[Math.floor(sortedRates.length / 2)]
@@ -151,6 +157,14 @@ export default async function HotspotsPage({
                     {formatNumber(areas.length)}
                   </span>{" "}
                   areas with crashes
+                  {unattributed > 0 ? (
+                    <span className="text-surface-500">
+                      {" "}
+                      · {formatNumber(unattributed)}{" "}
+                      {unattributed === 1 ? "crash has" : "crashes have"} no
+                      recorded area
+                    </span>
+                  ) : null}
                 </span>
                 <span>
                   National severe rate{" "}
@@ -256,7 +270,8 @@ export default async function HotspotsPage({
                       <span className="font-medium text-navy-900">
                         {formatNumber(selected.area.severeCount)}
                       </span>{" "}
-                      serious or fatal ({formatPercent(selected.area.severeRate)})
+                      serious or fatal (
+                      {formatPercent(selected.area.severeRate)})
                     </p>
                     <Link
                       href={areaHref(filters, null)}

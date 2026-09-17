@@ -1,0 +1,24 @@
+{
+  "completedAt": "2026-09-17T08:30:28+00:00",
+  "snapshot": {
+    "retrievedAt": "2026-09-17T07:22:38+00:00",
+    "sourceLastModified": "Sat, 12 Sep 2026 21:12:23 GMT",
+    "sha256": "19578b43e9a23cc674bcec14f319c6a65e13fe0c5c2fbbe619d435708391cd7f",
+    "contentFingerprint": "3a10be06afb9cf58",
+    "rows": 705609
+  },
+  "outputs": {
+    "cleanColumns": 74,
+    "featureColumns": 82,
+    "severeRate": 0.06724,
+    "objectInvolvedRate": 0.427451
+  },
+  "stepSeconds": {
+    "snapshot": 0.5,
+    "load + validate raw": 29.1,
+    "clean + validate": 29.1,
+    "features + validate": 27.2,
+    "frontend fixtures": 13.5,
+    "data dictionary": 17.6
+  }
+}

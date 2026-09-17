@@ -40,7 +40,7 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 
 ---
 
-## 5. Rejected the "mid-history schema change" theory for the 57.3%-missing roadside-object columns — decision on how to fill them is still open
+## 5. Rejected the "mid-history schema change" theory for the 57.3%-missing roadside-object columns — resolved in #42
 
 **Context**: 28 columns (`bridge`, `fence`, `tree`, `vehicle`, etc.) are all missing for the exact same 57.3% of rows. Initial hypothesis (documented in the EDA notebook before testing) was that CAS started recording these only from some year onward.
 
@@ -359,3 +359,27 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: the density grid crosses into the client map as `[lat, lon, regionIndex, crashes, severe]` tuples plus a region table. The API/service shape stays as objects.
 
 **Why**: Server Component props are serialised into the HTML, so key names were repeated 6,103 times per page. Packing cut raw HTML by 69–76% with an exact round-trip (tested). It stays an internal detail so the public contract remains readable.
+
+---
+
+## 42. Blank object-struck fields mean "nothing struck"
+
+**Decision**: fill the 23-column object block with 0 and keep `object_involved` as a flag. Fill blank `pedestrian` with 0. Both rules stop the pipeline if the pattern they rely on breaks: a partially filled block, or explicit pedestrian zeros.
+
+**Why**: the block is all-or-nothing on every row, and where filled, 95.9% of rows record a strike. It is filled more for fatal and open-road crashes, and NZTA's user guide says object filters only return object-involved crashes. Treating the blanks as unknown would have thrown away real information on 57% of crashes. The guards make this an assumption that is checked on every run, not hoped for.
+
+---
+
+## 43. Pin snapshots by manifest and content fingerprint; OBJECTID is not a key
+
+**Decision**: every download writes a manifest (SHA-256, rows, bytes, source timestamps). Every run records an order-independent content fingerprint. `OBJECTID` is treated as a row number.
+
+**Why**: two exports a week apart held identical crashes in a different order with different `OBJECTID`s, so the file hashes differed while the data did not. The CSV export also lags the live service (705,609 vs 707,449). Without both identifiers there is no way to say which data produced a published figure, or whether a refresh changed anything.
+
+---
+
+## 44. Unusable locations and unknown areas are excluded from maps and rankings, and counted
+
+**Decision**: the one crash with placeholder coordinates is blanked (`location_valid`) and left off the map. The Unknown territorial authority (140 crashes) is left out of the hotspot ranking. Both pages state how many crashes they exclude.
+
+**Why**: a crash drawn in the ocean, or a "hotspot" whose centroid averages crashes nationwide, is a wrong statement. This extends the missing-data rule from #30. Excluding without saying so would quietly break the totals, so each exclusion is counted and shown.

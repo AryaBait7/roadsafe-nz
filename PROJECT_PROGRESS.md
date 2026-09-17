@@ -4,7 +4,44 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 16 (Frontend testing + performance) — complete. The frontend build (Stages 1–16) is finished.** Next up: Stage 17 (real CAS data pipeline).
+**Stage 17 (Reproducible CAS pipeline) — complete.** Next up: Stage 18 (PostgreSQL + PostGIS).
+
+### Stage 17 — Reproducible CAS pipeline (done 2026-09-17)
+
+**Starting point:** the raw CSV had been deleted from `data/raw`, so the published figures could not be rebuilt from source.
+
+**Download and pinning.** `download_data.py` fetches the CAS export from NZTA's portal (item `8d684f1841fa4dbea6afaefc8a1ba0fc`, no credentials needed). It writes to a temporary `.part` file first. It then records `manifest.json` with the source's last-modified time, retrieval time, bytes (199,339,426), rows (705,609) and SHA-256, and `--verify` checks the local file against it.
+
+**What the refresh revealed:**
+- **The live service and the CSV export differ.** The Feature Service reports 707,449 records; the downloadable CSV (last modified 2026-09-12) has 705,609. The portal's export lags the live data.
+- **The snapshot's data is identical to what the site was built on,** but a file hash can't show that. Every row matched once `OBJECTID` was ignored, and year, severity and region counts were identical.
+- **`OBJECTID` is not a crash ID.** The two exports numbered the same crashes differently. It is documented as a row number, never to be used as a join key across snapshots; that matters for the Stage 18 database load.
+- The pipeline therefore records an **order-independent content fingerprint** (`3a10be06afb9cf58`: a sum of per-row hashes, excluding `OBJECTID`), not just a file hash.
+
+**Open data questions, resolved with evidence:**
+- **Object-struck block (23 columns, blank on 57.3% of rows).** The columns are always blank together, never partially. Where filled, 95.9% of rows record a strike, and the block is filled more often for fatal (53%) and open-road (56%) crashes. NZTA's user guide says object filters only return object-involved crashes. **Blank means nothing struck:** filled with 0, with the fact kept in a new `object_involved` flag (42.7% of crashes). The pipeline stops if a partially filled block ever appears.
+- **`pedestrian`** is never 0 when filled, so a blank is 0; the pipeline stops if explicit zeros appear.
+- **`intersection` and `crashRoadSideRoad`** are dropped, after a check that they are still empty.
+- **The "Unknown" map cell at [-47.5, 179.0]** is a 2024 Waitangi Wharf (Chatham Islands) crash whose coordinates back-project to exactly that round point in the ocean, about 450km away; a 2020 crash on the same road has real coordinates. A new `location_valid` flag blanks such coordinates. The crash counts everywhere but is left off the map, and **both map cards now say "1 crash has no usable location and is not shown."** Map total: 705,608 across 6,102 cells.
+- **Found along the way:** the "Unknown" territorial authority (140 crashes, 0% severe) was ranked as hotspot #67, with a centroid averaged from crashes nationwide. It is now excluded like the Stage 8 missing-data buckets, and the page states "140 crashes have no recorded area" (67 areas ranked; the median area rate is still 10.1%).
+- CAS files 131 Chatham Islands crashes under Manawatū-Whanganui and 5 under Wellington. Left as coded by NZTA and documented.
+
+**Pipeline runner and checks.** `run_pipeline.py` runs download/verify → validate raw → clean → validate → features → validate → fixtures → dictionary, then writes `pipeline_run.json`. `validate_data.py` stops the run on any broken assumption:
+- row counts match the manifest;
+- no literal "Null" strings remain;
+- the object block has no blanks;
+- `is_severe` agrees with severity;
+- valid coordinates fall inside New Zealand, with no more than 50 invalid;
+- hazard scores and speed bands are within range.
+
+The whole run takes about 2.5 minutes. **A second run gave the same fingerprint and left every fixture file untouched.** Fixture writing now skips files whose data is unchanged, so a timestamp alone doesn't rewrite 7MB.
+
+**Fixes found on the way:**
+- The run record counted clean columns after feature engineering had added its own in place (81 reported, 73 real).
+- The dictionary's example for all-unique columns depended on row order; it now uses the smallest value.
+
+**Tests:** 13 pytest unit tests (`python -m pytest`), and 30 frontend tests updated for 82 dictionary columns, 1 unmapped crash, 140 unattributed crashes and 67 hotspots.
+
 
 ### Stage 16 — Testing and performance (done 2026-09-17)
 
@@ -204,7 +241,9 @@ Seven requested changes, all against the existing components — no rebuild.
 | 14 | Loading/error/empty states | ✅ Complete |
 | 15 | Consistency + accessibility pass | ✅ Complete |
 | 16 | Frontend testing + performance | ✅ Complete |
-| 17–21 | Data pipeline, PostGIS, analytics, ML, explainability | 🟡 Pipeline + EDA + features done (see below) |
+| 17 | Reproducible CAS pipeline | ✅ Complete |
+| 18 | PostgreSQL + PostGIS | ⏭️ Next |
+| 19–21 | Analytics, ML, explainability | 🔲 |
 | 22 | Node/Express REST API | 🔲 |
 | 23 | Connect frontend to real API | 🔲 |
 | 24–27 | AWS, CI/CD, testing, portfolio docs | 🔲 |
@@ -446,6 +485,6 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 17 — real CAS pipeline.** Make the ETL reproducible end to end: raw download → clean → features → fixtures and dictionary, with the open data items below resolved. Then Stage 18 (PostgreSQL + PostGIS).
+1. **Stage 18 — PostgreSQL + PostGIS.** Needs a database: Docker or a native install. Load from the pipeline output with a surrogate key, since `OBJECTID` is not stable across snapshots.
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
-4. **Open data items before modelling:** drop the two 100%-empty columns (`intersection`, `crashRoadSideRoad`); decide fill-0 vs missing for the 57.3%-missing roadside-object block; investigate the grid cell at [-47.5, 179.0] tagged region "Unknown".
+4. **Data items resolved in Stage 17.** Remaining for Stage 20: decide whether `object_involved` becomes a model feature, since it is known at report time but describes the crash itself.
