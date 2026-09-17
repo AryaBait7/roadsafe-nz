@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { FilterSummary } from "@/components/layout/FilterSummary";
 import { CrashMapLoader } from "@/components/maps/CrashMapLoader";
+import { packPoints } from "@/lib/mapPack";
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { EmptyState } from "@/components/states/EmptyState";
 import { parseFilters } from "@/lib/filters";
@@ -57,7 +58,7 @@ export default async function MapExplorerPage({
               />
             ) : (
               <CrashMapLoader
-                points={points.data}
+                points={packPoints(points.data)}
                 gridDegrees={gridDegrees}
               />
             )}

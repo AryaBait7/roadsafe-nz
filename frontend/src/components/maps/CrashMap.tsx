@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
 import { SEQUENTIAL_RAMP_DARK } from "@/lib/chart-theme";
 import { formatNumber, formatPercent } from "@/lib/formatters";
+import { unpackPoints, type PackedMapPoints } from "@/lib/mapPack";
 import type { MapCrashPoint } from "@/types";
 
 /**
@@ -199,14 +200,15 @@ function InvalidateOnResize() {
 }
 
 export default function CrashMap({
-  points,
+  points: packed,
   gridDegrees,
   height = "70vh",
 }: {
-  points: MapCrashPoint[];
+  points: PackedMapPoints;
   gridDegrees: number;
   height?: string;
 }) {
+  const points = useMemo(() => unpackPoints(packed), [packed]);
   const [measure, setMeasure] = useState<Measure>("all");
 
   const collection = useMemo(

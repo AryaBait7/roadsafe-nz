@@ -30,7 +30,14 @@ export async function getSummary(
 
   // Reported range is what the data actually covers after filtering, not what
   // was requested — asking for 2000-2030 must not imply we hold those years.
-  const years = rows.map((row) => row.crashYear);
+  // A loop, not Math.min(...years): spreading ~47k rows into one call sits
+  // close to engine argument limits and fails outright on a larger cube.
+  let yearFrom = Infinity;
+  let yearTo = -Infinity;
+  for (const row of rows) {
+    if (row.crashYear < yearFrom) yearFrom = row.crashYear;
+    if (row.crashYear > yearTo) yearTo = row.crashYear;
+  }
 
   return {
     data: {
@@ -39,8 +46,8 @@ export async function getSummary(
       fatalCrashes: countOf("Fatal Crash"),
       peopleKilled: sum(rows, (row) => row.peopleKilled),
       peopleInjured: sum(rows, (row) => row.seriousInjuries + row.minorInjuries),
-      yearFrom: years.length ? Math.min(...years) : 0,
-      yearTo: years.length ? Math.max(...years) : 0,
+      yearFrom: rows.length ? yearFrom : 0,
+      yearTo: rows.length ? yearTo : 0,
     },
     meta,
   };

@@ -4,7 +4,33 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 15 (Consistency + accessibility) — complete.** Next up: Stage 16 (Frontend testing + performance).
+**Stage 16 (Frontend testing + performance) — complete. The frontend build (Stages 1–16) is finished.** Next up: Stage 17 (real CAS data pipeline).
+
+### Stage 16 — Testing and performance (done 2026-09-17)
+
+**Tests: Vitest + React Testing Library, 30 tests across 5 files, `npm test` in about 3s.**
+
+- `services.test.ts` runs the real services against the real fixtures and asserts the independently reconciled CAS figures: 705,609 / 41,263 / 6,182 / 6,911 / 280,236. It also checks that severity, trends, map and hotspots each re-total to 705,609, and covers Waikato 2020–2024, Auckland as hotspot #1, the unsealed-road lift, flagged "Unknown" buckets, null ML metrics, the split counts, and the dictionary/ML exclusion agreement.
+- `filters.test.ts` covers URL parsing: malformed years, reversed ranges, unknown severities, round-trips and chips.
+- `csv.test.ts` covers formula injection, quoting (including a bare `\r`, which the old writer missed), macrons and CRLF.
+- `mapPack.test.ts` checks an exact round-trip of the real grid and the size reduction.
+- `DictionaryExplorer.test.tsx` covers search, role and missingness filters, the empty state and Clear.
+- **The tests were checked against a planted bug:** changing `>` to `>=` in the cube's year filter failed 2 tests. After reverting, all pass.
+
+**Performance, measured on the production build (`next start`):**
+
+| Route | Server (warm) | HTML gz | JS gz | Recharts |
+|---|---|---|---|---|
+| `/`, `/ml-insights`, `/data-dictionary` | <10ms (static) | 8–22KB | ~190–198KB | no |
+| `/dashboard` | 170–250ms (810ms cold, incl. cube parse) | 55→**44KB** | 313KB | yes |
+| `/map-explorer` | 120–130ms | 47→**36KB** | 193KB | no |
+| `/crash-trends`, `/hotspots` | 90–220ms | 14–21KB | ~305–313KB | yes |
+
+- Recharts (112KB gz) loads only on the three pages that draw a line chart or donut. Leaflet is never in the initial HTML; it loads on demand.
+- **Map payload packing.** The 6,103 grid cells crossed the server/client boundary as objects, making about 700KB of raw HTML per map page. They now travel as tuples plus a region table (`lib/mapPack.ts`): raw HTML dropped **69% on Dashboard (782→244KB) and 76% on Map Explorer (708→169KB)**. The service contract is unchanged, and the map was verified to render all 6,103 cells.
+- `getSummary` no longer spreads ~47k years into `Math.min(...)`, which sat close to engine argument limits.
+- Tooling: `@types/node` now matches the Node 22 runtime (Vitest 5 requires it), and Vite's native `resolve.tsconfigPaths` replaces a plugin. Added `npm test`, `test:watch` and `typecheck` scripts, plus a `roadsafe-prod` launch config (port 3200).
+
 
 ### Stage 15 — Consistency and accessibility (done 2026-09-17)
 
@@ -177,7 +203,7 @@ Seven requested changes, all against the existing components — no rebuild.
 | 13 | Animation + UX polish | ✅ Complete |
 | 14 | Loading/error/empty states | ✅ Complete |
 | 15 | Consistency + accessibility pass | ✅ Complete |
-| 16 | Frontend testing + performance | ⏭️ Next |
+| 16 | Frontend testing + performance | ✅ Complete |
 | 17–21 | Data pipeline, PostGIS, analytics, ML, explainability | 🟡 Pipeline + EDA + features done (see below) |
 | 22 | Node/Express REST API | 🔲 |
 | 23 | Connect frontend to real API | 🔲 |
@@ -420,6 +446,6 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 16 — tests and performance.** Unit tests for the cube aggregation, filter parsing and CSV writer, with totals asserted against the reconciled CAS figures. Add an automated accessibility check. Measure bundle size and first-load cost of the 6.2MB cube.
+1. **Stage 17 — real CAS pipeline.** Make the ETL reproducible end to end: raw download → clean → features → fixtures and dictionary, with the open data items below resolved. Then Stage 18 (PostgreSQL + PostGIS).
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
 4. **Open data items before modelling:** drop the two 100%-empty columns (`intersection`, `crashRoadSideRoad`); decide fill-0 vs missing for the 57.3%-missing roadside-object block; investigate the grid cell at [-47.5, 179.0] tagged region "Unknown".

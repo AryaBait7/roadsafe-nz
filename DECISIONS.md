@@ -343,3 +343,19 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: `surface-500` was darkened to #657080 and became the floor for text on light surfaces. `surface-400` is restricted to navy backgrounds and non-text use.
 
 **Why**: axe found the same failure in 49 places, all from one token used in the wrong context. Retuning the token and stating its rule fixes every instance and prevents new ones. Patching elements one at a time would not.
+
+---
+
+## 40. Tests assert real published numbers, not mocks
+
+**Decision**: service tests read the committed real fixtures and assert the figures reconciled against the CAS CSV. Nothing is mocked.
+
+**Why**: the risk that matters in this project is a wrong statistic, not a wrong function call. A mocked data layer would pass while the dashboard published a false number. A planted off-by-one in the year filter was caught by two tests. These assertions also carry over as contract tests when the API replaces fixtures.
+
+---
+
+## 41. Pack large props at the server/client boundary
+
+**Decision**: the density grid crosses into the client map as `[lat, lon, regionIndex, crashes, severe]` tuples plus a region table. The API/service shape stays as objects.
+
+**Why**: Server Component props are serialised into the HTML, so key names were repeated 6,103 times per page. Packing cut raw HTML by 69–76% with an exact round-trip (tested). It stays an internal detail so the public contract remains readable.

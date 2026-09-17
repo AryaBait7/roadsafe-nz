@@ -863,7 +863,20 @@ print dialog with print-only styles.
 
 ---
 
-## 40. Verifying work instead of assuming it
+## 40. Testing what matters, and measuring before optimising
+
+**What**: the tests target what would hurt most, a wrong published figure. They assert real reconciled totals and check that independent aggregation paths agree. A deliberately planted bug proved the suite catches regressions. Performance work started with measurement: per-route server time, gzipped HTML and JavaScript, and which heavy libraries each route loads. That pointed at one real problem, 700KB of serialised map props, rather than guesses.
+
+**Interview questions**
+- Why not mock the data layer in these tests?
+- How do you know your tests would catch a bug? (plant one: mutation testing)
+- Why can't Vitest unit-test async Server Components, and what would you use instead? (E2E, e.g. Playwright)
+- What gets serialised when a Server Component passes props to a Client Component, and how did you shrink it?
+- Why does gzip hide much of the repetition, and why does raw size still matter? (parse and memory cost on the client)
+
+---
+
+## 41. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

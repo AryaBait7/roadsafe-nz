@@ -1,7 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
-Reflects the implementation as of Stage 15 (2026-09-17).
+Reflects the implementation as of Stage 16 (2026-09-17).
 
 ## Target architecture
 
@@ -235,6 +235,16 @@ Tailwind v4, CSS-first: tokens in `@theme`, no `tailwind.config.ts`.
 - Text greys: `surface-500` is the lightest allowed on light surfaces (≥4.7:1); `surface-400` is for borders, icons and text on navy only.
 - Every chart has a table-view twin; this is required, not optional, because
   one severity colour sits below 3:1.
+
+## Testing
+
+Vitest (`npm test`). Service tests run the real services against the committed fixtures and assert reconciled CAS totals, so they double as the contract tests for the Stage 23 API swap: the same assertions should pass against `apiGet`. Component tests use React Testing Library in jsdom. Async Server Components are not unit-testable in Vitest; pages were verified in the browser.
+
+## Performance notes
+
+- Static routes (landing, ML Insights, Data Dictionary) are prerendered. Filtered routes render per request, taking 90–250ms warm; the first request parses the cube (about 0.6s extra).
+- Recharts loads only where charts render, and Leaflet only when a map mounts.
+- Map cells cross the server/client boundary packed as tuples (`lib/mapPack.ts`), which cut raw HTML by 69–76% on map pages.
 
 ## Known limitations
 

@@ -7,6 +7,7 @@ import { Donut } from "@/components/charts/Donut";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { DataTable } from "@/components/charts/DataTable";
 import { CrashMapLoader } from "@/components/maps/CrashMapLoader";
+import { packPoints } from "@/lib/mapPack";
 import {
   Card,
   CardBody,
@@ -268,7 +269,7 @@ export default async function DashboardPage({
                 />
               ) : (
                 <CrashMapLoader
-                  points={mapPoints.data}
+                  points={packPoints(mapPoints.data)}
                   gridDegrees={gridDegrees}
                   height="430px"
                 />

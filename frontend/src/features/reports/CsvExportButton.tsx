@@ -1,20 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-
-type Cell = string | number;
-
-/**
- * Quote a value for CSV, and neutralise anything a spreadsheet would treat
- * as a formula. Values here come from the dataset rather than from users, but
- * an export is exactly where CSV injection bites, so it is handled at the
- * point the file is written rather than trusted upstream.
- */
-function toCsvCell(value: Cell): string {
-  let text = String(value);
-  if (/^[=+\-@]/.test(text) && typeof value !== "number") text = `'${text}`;
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
+import { buildCsv, type CsvCell } from "@/lib/csv";
 
 /**
  * Downloads real aggregates as CSV, built in the browser from the rows the
@@ -28,12 +15,10 @@ export function CsvExportButton({
 }: {
   filename: string;
   columns: string[];
-  rows: Cell[][];
+  rows: CsvCell[][];
 }) {
   const download = () => {
-    const csv = [columns, ...rows]
-      .map((row) => row.map(toCsvCell).join(","))
-      .join("\r\n");
+    const csv = buildCsv(columns, rows);
 
     // Leading BOM so Excel reads macrons (Manawatū) as UTF-8.
     const blob = new Blob(["﻿", csv], { type: "text/csv;charset=utf-8" });

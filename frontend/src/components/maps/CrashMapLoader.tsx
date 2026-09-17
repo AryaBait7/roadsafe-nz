@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/Skeleton";
-import type { MapCrashPoint } from "@/types";
+import type { PackedMapPoints } from "@/lib/mapPack";
 
 /**
  * Client-side loader for the map.
@@ -18,7 +18,8 @@ const CrashMap = dynamic(() => import("./CrashMap"), {
 });
 
 export function CrashMapLoader(props: {
-  points: MapCrashPoint[];
+  /** Packed on the server with `packPoints` to keep the page HTML small. */
+  points: PackedMapPoints;
   gridDegrees: number;
   height?: string;
 }) {
