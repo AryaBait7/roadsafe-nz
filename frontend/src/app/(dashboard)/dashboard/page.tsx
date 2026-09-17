@@ -375,7 +375,7 @@ export default async function DashboardPage({
           </Card>
         </div>
 
-        <p className="text-[10px] text-surface-400">
+        <p className="text-[10px] text-surface-500">
           Data source: Waka Kotahi NZ Transport Agency, Crash Analysis System
           (CAS). {summary.yearTo} is a partial year.
         </p>

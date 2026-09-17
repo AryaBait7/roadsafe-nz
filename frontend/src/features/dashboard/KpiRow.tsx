@@ -86,7 +86,7 @@ function Delta({ current, previous }: { current: number; previous: number }) {
 
   if (flat) {
     return (
-      <p className="mt-1 text-[10px] text-surface-400">
+      <p className="mt-1 text-[10px] text-surface-500">
         No change vs previous period
       </p>
     );
@@ -99,7 +99,7 @@ function Delta({ current, previous }: { current: number; previous: number }) {
       }`}
     >
       {rising ? "↑" : "↓"} {formatPercent(Math.abs(change), 1)}{" "}
-      <span className="font-normal text-surface-400">vs previous period</span>
+      <span className="font-normal text-surface-500">vs previous period</span>
     </p>
   );
 }
@@ -131,7 +131,7 @@ function Kpi({
         <Icon name={icon} />
       </div>
 
-      <p className="mt-1.5 text-[10px] text-surface-400">{period}</p>
+      <p className="mt-1.5 text-[10px] text-surface-500">{period}</p>
       {previous !== undefined ? (
         <Delta current={value} previous={previous} />
       ) : null}

@@ -246,7 +246,7 @@ export default async function MlInsightsPage() {
                     <div className="min-w-0">
                       <p className="text-[12px] font-medium text-navy-900">
                         {model.name}{" "}
-                        <span className="font-normal text-surface-400">· {model.role}</span>
+                        <span className="font-normal text-surface-500">· {model.role}</span>
                       </p>
                       <p className="mt-0.5 text-[11px] leading-snug text-surface-500">{model.why}</p>
                     </div>
@@ -273,7 +273,7 @@ export default async function MlInsightsPage() {
                   <div key={metric.name} className="rounded-md border border-dashed border-surface-300 p-2.5">
                     <p className="text-[10px] text-surface-500">{metric.name}</p>
                     <p className="mt-1 text-xl font-semibold text-surface-300">—</p>
-                    <p className="mt-1 text-[10px] leading-snug text-surface-400">{metric.note}</p>
+                    <p className="mt-1 text-[10px] leading-snug text-surface-500">{metric.note}</p>
                   </div>
                 ))}
               </div>
@@ -302,7 +302,7 @@ export default async function MlInsightsPage() {
                     {[a, b].map((cell) => (
                       <span
                         key={cell}
-                        className="grid h-14 place-items-center rounded-md border border-dashed border-surface-300 text-center text-surface-400"
+                        className="grid h-14 place-items-center rounded-md border border-dashed border-surface-300 text-center text-surface-500"
                       >
                         <span>
                           <span className="block text-base font-semibold text-surface-300">—</span>
@@ -313,7 +313,7 @@ export default async function MlInsightsPage() {
                   </div>
                 ))}
               </div>
-              <p className="mt-2.5 text-[10px] leading-snug text-surface-400">
+              <p className="mt-2.5 text-[10px] leading-snug text-surface-500">
                 False negatives — severe crashes the model misses — are the
                 costliest error here, which is why recall is weighted heavily.
               </p>
@@ -341,7 +341,7 @@ export default async function MlInsightsPage() {
                 {data.candidateFeatures.map((feature) => (
                   <li key={feature.name} className="text-[11px]">
                     <span className="font-medium text-navy-900">{feature.name}</span>
-                    <span className="block text-[10px] text-surface-400">{feature.description}</span>
+                    <span className="block text-[10px] text-surface-500">{feature.description}</span>
                   </li>
                 ))}
               </ul>
@@ -364,7 +364,7 @@ export default async function MlInsightsPage() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 text-[10px] leading-snug text-surface-400">
+              <p className="mt-3 text-[10px] leading-snug text-surface-500">
                 A model given these would score near-perfectly in testing and be
                 useless in practice, since none of them is known before the
                 outcome is.

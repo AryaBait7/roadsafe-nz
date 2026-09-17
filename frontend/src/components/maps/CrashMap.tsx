@@ -245,7 +245,7 @@ export default function CrashMap({
         </div>
 
         <div className="flex items-center gap-1.5 text-[10px] text-surface-500">
-          <span className="text-surface-400">Crashes per cell</span>
+          <span className="text-surface-500">Crashes per cell</span>
           {BINS.map((bin, index) => (
             <span key={bin.label} className="flex items-center gap-1">
               <span
@@ -297,7 +297,7 @@ export default function CrashMap({
         </MapContainer>
       </div>
 
-      <p className="text-[10px] leading-snug text-surface-400">
+      <p className="text-[10px] leading-snug text-surface-500">
         {formatNumber(collection.features.length)} cells at {gridDegrees}° (~
         {Math.round(gridDegrees * 111)}km). Individual crash locations are
         never published — each cell is an aggregate.

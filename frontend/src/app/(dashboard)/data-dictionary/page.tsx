@@ -112,7 +112,7 @@ export default async function DataDictionaryPage() {
         </div>
 
         {meta.generatedAt ? (
-          <p className="text-[10px] text-surface-400">
+          <p className="text-[10px] text-surface-500">
             Profiled {new Date(meta.generatedAt).toLocaleDateString("en-NZ")} ·{" "}
             {meta.note}
           </p>

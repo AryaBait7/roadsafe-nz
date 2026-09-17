@@ -82,14 +82,43 @@ export function Sidebar({ options }: { options?: FilterOptions }) {
   useEffect(() => {
     if (!isDrawerOpen) return;
 
-    drawerRef.current?.focus();
+    // Modal behaviour: focus moves in, Tab cannot leave, and focus returns
+    // to whichever control opened the drawer when it closes.
+    const opener = document.activeElement as HTMLElement | null;
+    const drawer = drawerRef.current;
+    drawer?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDrawerOpen(false);
+      if (event.key === "Escape") {
+        setDrawerOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !drawer) return;
+
+      const focusable = drawer.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (
+        event.shiftKey &&
+        (document.activeElement === first || document.activeElement === drawer)
+      ) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
 
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      opener?.focus();
+    };
   }, [isDrawerOpen]);
 
   return (
@@ -100,7 +129,7 @@ export function Sidebar({ options }: { options?: FilterOptions }) {
       </aside>
 
       {/* Mobile: top bar + drawer */}
-      <div className="flex h-14 items-center gap-3 bg-navy-950 px-4 lg:hidden print:hidden">
+      <header className="flex h-14 items-center gap-3 bg-navy-950 px-4 lg:hidden print:hidden">
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
@@ -140,7 +169,7 @@ export function Sidebar({ options }: { options?: FilterOptions }) {
           </svg>
           Filters
         </button>
-      </div>
+      </header>
 
       {isDrawerOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">

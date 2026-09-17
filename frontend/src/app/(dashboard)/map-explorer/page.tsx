@@ -37,7 +37,7 @@ export default async function MapExplorerPage({
       />
       <FilterSummary filters={filters} pathname="/map-explorer" />
 
-      <div className="space-y-4 p-6">
+      <div className="space-y-3 p-4">
         <Card>
           <CardHeader>
             <div className="min-w-0">

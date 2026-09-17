@@ -55,12 +55,17 @@ function RankedAreas({
           <li key={hotspot.id}>
             <Link
               href={areaHref(filters, isSelected ? null : hotspot.id)}
+              // Selecting an area updates the detail panel beside the list;
+              // jumping to the top of the page would lose the reader's place.
+              scroll={false}
               aria-current={isSelected ? "true" : undefined}
               className={`grid grid-cols-[1.4rem_minmax(0,1fr)_auto] items-center gap-2 rounded px-1.5 py-1 transition-colors ${
-                isSelected ? "bg-accent-500/10" : "hover:bg-surface-100"
+                isSelected
+                  ? "bg-accent-500/[0.06] ring-1 ring-accent-500/40"
+                  : "hover:bg-surface-100"
               }`}
             >
-              <span className="tabular text-[10px] text-surface-400">
+              <span className="tabular text-[10px] text-surface-500">
                 {index + 1}
               </span>
 
@@ -159,7 +164,7 @@ export default async function HotspotsPage({
                     {formatPercent(medianAreaRate)}
                   </span>
                 </span>
-                <span className="max-w-xl text-surface-400">
+                <span className="max-w-xl text-surface-500">
                   The median area is markedly worse than the national figure
                   because Auckland&rsquo;s volume dominates the average while
                   rural districts carry the highest rates.
@@ -255,6 +260,7 @@ export default async function HotspotsPage({
                     </p>
                     <Link
                       href={areaHref(filters, null)}
+                      scroll={false}
                       className="inline-block text-[11px] font-medium text-accent-600 hover:underline"
                     >
                       Clear selection

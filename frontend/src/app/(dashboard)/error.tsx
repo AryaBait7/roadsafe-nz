@@ -65,7 +65,7 @@ export default function DashboardError({
                 </Link>
               </div>
               {error.digest ? (
-                <p className="text-[10px] text-surface-400">
+                <p className="text-[10px] text-surface-500">
                   Reference: <code>{error.digest}</code>
                 </p>
               ) : null}

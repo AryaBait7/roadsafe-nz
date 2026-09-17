@@ -163,18 +163,18 @@ export default async function RiskFactorsPage({
                           >
                             <span className="min-w-0 truncate">
                               {factor.factor}{" "}
-                              <span className="text-surface-400">
+                              <span className="text-surface-500">
                                 ({factor.category})
                               </span>
                             </span>
-                            <span className="tabular shrink-0 text-surface-400">
+                            <span className="tabular shrink-0 text-surface-500">
                               {formatNumber(factor.crashCount)} ·{" "}
                               {formatPercent(factor.severeRate)}
                             </span>
                           </li>
                         ))}
                       </ul>
-                      <p className="mt-3 text-[10px] leading-relaxed text-surface-400">
+                      <p className="mt-3 text-[10px] leading-relaxed text-surface-500">
                         &ldquo;Unknown&rdquo; is missing information rather than
                         a condition, and it skews hard in both directions:
                         crashes with no recorded speed limit are far more severe
@@ -209,7 +209,7 @@ export default async function RiskFactorsPage({
                     {weakest.lift >= 0 ? "+" : "−"}
                     {(Math.abs(weakest.lift) * 100).toFixed(2)}pp)
                   </span>
-                  <span className="text-surface-400">
+                  <span className="text-surface-500">
                     Baseline {formatPercent(data.baseline)} across{" "}
                     {formatNumber(
                       data.factors.reduce(

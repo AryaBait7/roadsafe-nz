@@ -75,7 +75,7 @@ export function NewsCardPlaceholder() {
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg border border-dashed border-surface-300 bg-white">
       <div className="grid aspect-[16/9] w-full place-items-center bg-surface-100">
-        <span className="text-[10px] tracking-[0.14em] text-surface-400 uppercase">
+        <span className="text-[10px] tracking-[0.14em] text-surface-700 uppercase">
           Image
         </span>
       </div>

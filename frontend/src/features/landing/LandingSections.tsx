@@ -219,16 +219,26 @@ export function LandingSections({
           </Reveal>
         </div>
       </section>
-
-      <footer className="border-t border-white/10 bg-navy-950 px-6 py-10">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 text-xs text-surface-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            Source: Waka Kotahi NZ Transport Agency, Crash Analysis System (CAS)
-            open data.
-          </p>
-          <p>RoadSafe NZ — a portfolio project. Not an official NZTA service.</p>
-        </div>
-      </footer>
     </>
+  );
+}
+
+/**
+ * Kept outside <main> (see app/page.tsx) so it is exposed as the page's
+ * contentinfo landmark.
+ */
+export function LandingFooter() {
+  return (
+    <footer className="border-t border-white/10 bg-navy-950 px-6 py-10">
+      {/* surface-400, not 500: 500 on navy-950 measured 4.1:1, under the
+          4.5:1 AA minimum for body text. */}
+      <div className="mx-auto flex max-w-5xl flex-col gap-3 text-xs text-surface-400 sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          Source: Waka Kotahi NZ Transport Agency, Crash Analysis System (CAS)
+          open data.
+        </p>
+        <p>RoadSafe NZ — a portfolio project. Not an official NZTA service.</p>
+      </div>
+    </footer>
   );
 }

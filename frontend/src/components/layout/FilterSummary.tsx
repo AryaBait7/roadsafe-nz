@@ -46,7 +46,7 @@ export async function FilterSummary({
       </p>
 
       {chips.length === 0 ? (
-        <span className="text-xs text-surface-400">No filters applied</span>
+        <span className="text-xs text-surface-500">No filters applied</span>
       ) : (
         <div className="flex flex-wrap items-center gap-1.5">
           {chips.map((chip) => (
@@ -59,7 +59,7 @@ export async function FilterSummary({
               <span className="font-medium">{chip.value}</span>
               <span
                 aria-hidden
-                className="text-surface-400 group-hover:text-navy-900"
+                className="text-surface-500 group-hover:text-navy-900"
               >
                 ×
               </span>

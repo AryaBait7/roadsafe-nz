@@ -62,7 +62,7 @@ export default async function CrashTrendsPage({
       />
       <FilterSummary filters={filters} pathname="/crash-trends" />
 
-      <div className="space-y-4 p-6">
+      <div className="space-y-3 p-4">
         {isEmpty ? (
           <EmptyState
             title="No crashes match these filters"
@@ -187,7 +187,7 @@ export default async function CrashTrendsPage({
               }
             />
 
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-3 xl:grid-cols-2">
               <ChartPanel
                 title="Crashes by region"
                 description="Ranked by crash volume, with the share of each region's crashes that were serious or fatal."

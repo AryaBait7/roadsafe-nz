@@ -1,7 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { CircleMarker, MapContainer, TileLayer, Tooltip, useMap } from "react-leaflet";
 import { SEQUENTIAL_RAMP_DARK } from "@/lib/chart-theme";
@@ -75,13 +75,22 @@ export default function HotspotMap({
   height?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Keep every active filter; only the selected area changes. Building the
+  // URL from `area` alone silently cleared the year and region filters.
+  const hrefFor = (areaId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("area", areaId);
+    return `/hotspots?${params}`;
+  };
 
   const largest = Math.max(...hotspots.map((h) => h.crashCount), 1);
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-surface-500">
-        <span className="text-surface-400">
+        <span className="text-surface-500">
           Circle size = crashes · fill = severe rate
         </span>
         <div className="flex items-center gap-1.5">
@@ -133,10 +142,7 @@ export default function HotspotMap({
                 }}
                 eventHandlers={{
                   click: () =>
-                    router.push(
-                      `/hotspots?${new URLSearchParams({ area: hotspot.id })}`,
-                      { scroll: false },
-                    ),
+                    router.push(hrefFor(hotspot.id), { scroll: false }),
                 }}
               >
                 {/* Tooltip rather than popup: this is a scan-and-compare map,

@@ -1,7 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
-Reflects the implementation as of Stage 14 (2026-09-17).
+Reflects the implementation as of Stage 15 (2026-09-17).
 
 ## Target architecture
 
@@ -232,6 +232,7 @@ Tailwind v4, CSS-first: tokens in `@theme`, no `tailwind.config.ts`.
   reports live in `lib/chart-theme.ts`: severity set, single-series blue,
   light and dark sequential ramps, diverging pair. Safety yellow (1.56:1 on
   white) is never used as a chart mark.
+- Text greys: `surface-500` is the lightest allowed on light surfaces (≥4.7:1); `surface-400` is for borders, icons and text on navy only.
 - Every chart has a table-view twin; this is required, not optional, because
   one severity colour sits below 3:1.
 

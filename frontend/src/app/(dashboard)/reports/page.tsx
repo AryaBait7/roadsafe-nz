@@ -268,7 +268,7 @@ export default async function ReportsPage({
                           </p>
                           <p className="text-[11px] text-surface-500">
                             {item.description}{" "}
-                            <span className="text-surface-400">
+                            <span className="text-surface-500">
                               {formatNumber(item.rows.length)} rows ·{" "}
                               <code>{item.filename}</code>
                             </span>
@@ -309,7 +309,7 @@ export default async function ReportsPage({
                         <p className="mt-0.5 text-[11px] text-surface-500">
                           {item.description}
                         </p>
-                        <p className="mt-0.5 text-[10px] text-surface-400">
+                        <p className="mt-0.5 text-[10px] text-surface-500">
                           Needs: {item.needs}
                         </p>
                       </li>

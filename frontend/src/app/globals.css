@@ -29,7 +29,11 @@
   --color-surface-200: #e3e7ee;
   --color-surface-300: #cbd2de;
   --color-surface-400: #9ba5b5;
-  --color-surface-500: #6b7685;
+  /* 500 is the lightest grey allowed for text on light surfaces: #657080 is
+     5.0:1 on white and 4.7:1 on surface-50. The previous #6b7685 fell to
+     4.3:1 on the page background. 400 is for borders, icons and text on
+     navy only (2.5:1 on white). */
+  --color-surface-500: #657080;
   --color-surface-700: #3c4654;
   --color-surface-900: #1a1f29;
 
@@ -47,7 +51,7 @@
   --color-chart-grid: #e6e9ef;
   --color-chart-axis: #cbd2de;
   --color-chart-ink: #3c4654;
-  --color-chart-muted: #6b7685;
+  --color-chart-muted: #657080;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }

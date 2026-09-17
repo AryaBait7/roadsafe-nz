@@ -38,7 +38,7 @@ export function DivergingBars({
           />
           Less severe than average
         </span>
-        <span className="text-surface-400">
+        <span className="text-surface-500">
           Baseline {formatPercent(baseline)}
         </span>
         <span className="flex items-center gap-1.5">
@@ -68,7 +68,7 @@ export function DivergingBars({
                 >
                   {item.factor}
                 </span>
-                <span className="block truncate text-[10px] text-surface-400">
+                <span className="block truncate text-[10px] text-surface-500">
                   {item.category}
                 </span>
               </span>
@@ -99,7 +99,7 @@ export function DivergingBars({
                   {worse ? "+" : "−"}
                   {(Math.abs(item.lift) * 100).toFixed(2)}pp
                 </span>
-                <span className="tabular block text-[10px] text-surface-400">
+                <span className="tabular block text-[10px] text-surface-500">
                   {formatNumber(item.crashCount)}
                 </span>
               </span>

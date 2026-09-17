@@ -851,7 +851,19 @@ print dialog with print-only styles.
 
 ---
 
-## 39. Verifying work instead of assuming it
+## 39. Accessibility: what tools catch and what they don't
+
+**What**: axe-core found contrast, landmark and heading problems across the app. It passed pages whose drawer leaked focus, and pages where a map click silently cleared the user's filters. Those needed keyboard walkthroughs and URL checks. WCAG AA needs 4.5:1 for normal text; a translucent tint changes the effective background, so contrast has to be computed against the *blended* colour.
+
+**Interview questions**
+- What share of accessibility issues can automated tools find, and what did you check by hand?
+- What makes a modal dialog accessible? (focus in, trapped, Escape, focus returned, `aria-modal`)
+- Why fix contrast at the design token rather than per component?
+- How do you compute contrast on a semi-transparent background?
+
+---
+
+## 40. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

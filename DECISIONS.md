@@ -335,3 +335,11 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: a single `loading.tsx` and `error.tsx` in `app/(dashboard)`, not one per page. Retry is `router.refresh()` plus `reset()`. Production shows a digest, never the error text.
 
 **Why**: every page shares the same structure and data layer, so per-page boundaries would repeat themselves. Server errors need a refetch, and a bare `reset()` silently fails. Next.js redacts server error messages in production for a reason: fixture paths and stack traces are internal. The cost is that a hard load now streams the body behind a boundary; see the Stage 14 trade-off.
+
+---
+
+## 39. Fix contrast at the token, not per element
+
+**Decision**: `surface-500` was darkened to #657080 and became the floor for text on light surfaces. `surface-400` is restricted to navy backgrounds and non-text use.
+
+**Why**: axe found the same failure in 49 places, all from one token used in the wrong context. Retuning the token and stating its rule fixes every instance and prevents new ones. Patching elements one at a time would not.

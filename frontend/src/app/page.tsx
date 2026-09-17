@@ -1,5 +1,8 @@
 import { HeroIntro } from "@/features/landing/HeroIntro";
-import { LandingSections } from "@/features/landing/LandingSections";
+import {
+  LandingFooter,
+  LandingSections,
+} from "@/features/landing/LandingSections";
 import { getSummary } from "@/services/dashboardService";
 
 /**
@@ -16,8 +19,11 @@ export default async function LandingPage() {
 
   return (
     <>
-      <HeroIntro />
-      <LandingSections summary={summary} />
+      <main>
+        <HeroIntro />
+        <LandingSections summary={summary} />
+      </main>
+      <LandingFooter />
     </>
   );
 }

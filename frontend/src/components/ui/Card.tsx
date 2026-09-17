@@ -49,9 +49,11 @@ export function CardTitle({
   className,
   children,
   ...props
-}: React.ComponentProps<"h3">) {
+}: React.ComponentProps<"h2">) {
+  // h2: card titles sit directly under the page's h1. As h3 they skipped a
+  // level, which breaks heading navigation for screen-reader users.
   return (
-    <h3
+    <h2
       className={cn(
         "text-[13px] leading-tight font-semibold text-navy-900",
         className,
@@ -59,7 +61,7 @@ export function CardTitle({
       {...props}
     >
       {children}
-    </h3>
+    </h2>
   );
 }
 

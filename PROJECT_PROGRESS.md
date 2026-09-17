@@ -4,7 +4,26 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 14 (Loading/error/empty states) — complete.** Next up: Stage 15 (Consistency + accessibility pass).
+**Stage 15 (Consistency + accessibility) — complete.** Next up: Stage 16 (Frontend testing + performance).
+
+### Stage 15 — Consistency and accessibility (done 2026-09-17)
+
+**Automated audit:** axe-core 4.10 (WCAG 2 A/AA plus best practice) ran on all nine routes at desktop width, and on Hotspots again at 375px with a selection active. **Final result: zero violations everywhere.** Fixed along the way:
+
+- **Systematic low-contrast text.** `text-surface-400` (#9ba5b5) was used for small text on light backgrounds at 2.5:1. It stays on navy (7.6:1) and became `surface-500` everywhere else. `surface-500` itself moved from #6b7685 to #657080, because the old value was 4.3:1 on the page background; it is now 5.0:1 on white and 4.7:1 on `surface-50`. `chart-muted` followed. The landing footer measured 4.1:1 on navy and now uses `surface-400`. The news "Image" placeholder (4.4:1 on `surface-100`) now uses `surface-700`. The selected hotspot row's tint dropped from 10% to 6% (4.63:1) and gained a ring, so selection no longer relies on a faint tint.
+- **Landmarks.** The landing page had no `<main>`; the hero and sections are now inside one, with the footer outside it as `contentinfo`. The mobile top bar is a `<header>`.
+- **Heading order.** Card titles were `h3` directly under the page `h1`; `CardTitle` now renders `h2`.
+
+**Checked by hand, because axe cannot judge them:**
+
+- **Mobile drawer** moved focus in but did not trap it or return it. Tab and Shift+Tab now wrap inside it, and Escape closes it and returns focus to the button that opened it. All five checks pass.
+- **Hotspot map markers dropped every active filter.** They built the URL from `area` alone. They now copy the current query; verified `?yearFrom=2020` → `?yearFrom=2020&area=Tauranga+City`.
+- **Selecting or clearing a hotspot scrolled to the top of the page.** Those links now use `scroll={false}`, like the markers.
+
+**Consistency:** Crash Trends and Map Explorer used `p-6 space-y-4`/`gap-4`; all eight analytics pages now share `p-4 space-y-3`/`gap-3`.
+
+Lint, tsc and build are clean.
+
 
 ### Stage 14 — Loading, error and empty states (done 2026-09-17)
 
@@ -157,8 +176,8 @@ Seven requested changes, all against the existing components — no rebuild.
 | 12 | Responsive/mobile | ✅ Complete |
 | 13 | Animation + UX polish | ✅ Complete |
 | 14 | Loading/error/empty states | ✅ Complete |
-| 15 | Consistency + accessibility pass | ⏭️ Next |
-| 16 | Frontend testing + performance | 🔲 |
+| 15 | Consistency + accessibility pass | ✅ Complete |
+| 16 | Frontend testing + performance | ⏭️ Next |
 | 17–21 | Data pipeline, PostGIS, analytics, ML, explainability | 🟡 Pipeline + EDA + features done (see below) |
 | 22 | Node/Express REST API | 🔲 |
 | 23 | Connect frontend to real API | 🔲 |
@@ -401,7 +420,6 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 15 — consistency and accessibility.** Known item: Crash Trends uses `p-6 space-y-4` where other pages use `p-4 space-y-3`. Also audit heading order, landmarks, contrast, keyboard paths (drawer, chart/table toggles, hotspot selection) and focus management.
-2. **Stage 16** — tests and performance.
+1. **Stage 16 — tests and performance.** Unit tests for the cube aggregation, filter parsing and CSV writer, with totals asserted against the reconciled CAS figures. Add an automated accessibility check. Measure bundle size and first-load cost of the 6.2MB cube.
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
 4. **Open data items before modelling:** drop the two 100%-empty columns (`intersection`, `crashRoadSideRoad`); decide fill-0 vs missing for the 57.3%-missing roadside-object block; investigate the grid cell at [-47.5, 179.0] tagged region "Unknown".

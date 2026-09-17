@@ -136,7 +136,7 @@ export function DictionaryExplorer({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Field name or description, e.g. speed, weather"
-            className={cn(controlClass, "w-full placeholder:text-surface-400")}
+            className={cn(controlClass, "w-full placeholder:text-surface-500")}
           />
         </div>
 
@@ -226,7 +226,7 @@ export function DictionaryExplorer({
                 <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-[11px] font-semibold tracking-wide text-surface-600 uppercase">
                   <span>
                     {name}{" "}
-                    <span className="font-normal normal-case text-surface-400">
+                    <span className="font-normal normal-case text-surface-500">
                       · {rows.length}
                     </span>
                   </span>
@@ -273,32 +273,32 @@ export function DictionaryExplorer({
                       </div>
                       <p className="mt-1.5 leading-relaxed text-surface-700">
                         {f.description ?? (
-                          <span className="text-surface-400 italic">
+                          <span className="text-surface-500 italic">
                             Not yet documented
                           </span>
                         )}
                       </p>
                       <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
                         <div>
-                          <dt className="text-surface-400">Type</dt>
+                          <dt className="text-surface-500">Type</dt>
                           <dd className="text-navy-900">
                             {f.type} · {formatNumber(f.distinct)} distinct
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-surface-400">Missing</dt>
+                          <dt className="text-surface-500">Missing</dt>
                           <dd className="text-navy-900">
                             <MissingBar pct={f.missingPct} align="start" />
                           </dd>
                         </div>
                         <div className="min-w-0">
-                          <dt className="text-surface-400">Example</dt>
+                          <dt className="text-surface-500">Example</dt>
                           <dd className="truncate font-mono text-navy-800">
                             {f.example ?? "—"}
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-surface-400">Dashboard</dt>
+                          <dt className="text-surface-500">Dashboard</dt>
                           <dd className="text-navy-900">
                             {f.usedInDashboard ? "Used" : "Not used"}
                           </dd>
@@ -377,20 +377,20 @@ export function DictionaryExplorer({
                         </th>
                         <td className="max-w-md py-2 pr-3 leading-relaxed text-surface-700">
                           {f.description ?? (
-                            <span className="text-surface-400 italic">
+                            <span className="text-surface-500 italic">
                               Not yet documented
                             </span>
                           )}
                         </td>
                         <td className="py-2 pr-3 whitespace-nowrap text-surface-700">
                           {f.type}
-                          <span className="block text-[10px] text-surface-400">
+                          <span className="block text-[10px] text-surface-500">
                             {formatNumber(f.distinct)} distinct
                           </span>
                         </td>
                         <td className="max-w-40 py-2 pr-3">
                           {f.example === null ? (
-                            <span className="text-surface-400">—</span>
+                            <span className="text-surface-500">—</span>
                           ) : (
                             <code
                               className="block truncate font-mono text-[11px] text-navy-800"
@@ -409,7 +409,7 @@ export function DictionaryExplorer({
                               Yes
                             </span>
                           ) : (
-                            <span className="text-surface-400">—</span>
+                            <span className="text-surface-500">—</span>
                           )}
                         </td>
                         <td
@@ -417,7 +417,7 @@ export function DictionaryExplorer({
                           title={ML_TITLE[f.ml]}
                         >
                           {f.ml === "No" ? (
-                            <span className="text-surface-400">—</span>
+                            <span className="text-surface-500">—</span>
                           ) : (
                             <Badge
                               tone={
