@@ -1,7 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
-Reflects the implementation as of Stage 11 (2026-09-17).
+Reflects the implementation as of Stage 12 (2026-09-17).
 
 ## Target architecture
 
@@ -199,14 +199,14 @@ Components). Tiles are OpenStreetMap's, darkened by a CSS filter scoped to the
 tile pane (`.map-dark`) — third-party dark basemaps require keys and serve
 watermarked tiles without one. The density grid is one `GeoJSON` layer on the
 canvas renderer. Both maps use a `ResizeObserver` → `invalidateSize()` so
-Leaflet never draws against a stale container size.
+Leaflet never draws against a stale container size. Map wrappers are `isolate`d so Leaflet's z-indices cannot paint over the mobile drawer, and their height is capped at 60svh below `lg` so a phone user can still scroll past them.
 
 **Landing intro.** A real CSS 3D scene (`preserve-3d`) with a single
 `requestAnimationFrame`-driven camera: one transform write per frame for the
 looping road world and one for the sign, which rides cumulative distance so it
 is approached once. A phase machine drives the ~6.6s sequence; it plays on
 every visit to `/`, is skippable and replayable, and reduced-motion users get
-the final state before first paint. Motion blur is a flat layer outside the 3D
+the final state before first paint. Below 1280px the sign becomes an overhead gantry (CSS variables on `.road-sign-layout`) and the stage is scaled 0.64/0.82 on phones and small tablets, so the sign stays on screen through the end of the intro. Motion blur is a flat layer outside the 3D
 context because `filter` would flatten it.
 
 **Progressive enhancement.** The server renders final values; `CountUp` and

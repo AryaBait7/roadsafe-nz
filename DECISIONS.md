@@ -303,3 +303,19 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: `generate_data_dictionary.py` profiles the CSV for types, missing %, distinct counts and examples. It parses descriptions from DATA_DICTIONARY.md and reports undocumented or stale entries. Search on the page is local state, not URL state.
 
 **Why**: typing figures in by hand invites drift, and that already happened: the markdown said 28 roadside-object columns when 21 exist. Parsing the markdown avoids keeping two copies of the prose. Search terms are ephemeral and not worth a shareable URL. Keeping them local also keeps the page static, unlike the filter state in #22.
+
+---
+
+## 35. Responsive intro: an overhead gantry, not a smaller world
+
+**Decision**: below 1280px the sign moves from the roadside to an overhead gantry over the road. The switch uses CSS custom properties, and the stage is lightly scaled on phones.
+
+**Why**: modelling the projection showed a roadside board 255 units out leaves a 375px screen by 4.4s. Keeping it in frame by scaling alone would need a scale of about 0.3, which shrinks the road and leaves an empty band below it. Gantry signs are real on NZ motorways, so the scene stays believable. CSS variables avoid a JavaScript breakpoint and a hydration-sensitive re-render.
+
+---
+
+## 36. Phone layouts get their own structure where tables fail
+
+**Decision**: the data dictionary renders collapsible grouped cards below `lg` and the table above it. Maps are capped at 60svh on phones. Filters get a labelled entry point in the mobile top bar.
+
+**Why**: a seven-column table on a phone either scrolls sideways, which hides the description people came for, or crushes every column. A tall map captures the swipes meant to scroll the page. A hamburger alone does not tell anyone the filters are behind it.

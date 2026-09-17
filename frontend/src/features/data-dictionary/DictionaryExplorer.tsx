@@ -51,15 +51,26 @@ const controlClass =
   "h-8 rounded-md border border-surface-200 bg-white px-2 text-xs text-navy-900 " +
   "hover:border-surface-300 focus:border-accent-500";
 
-function MissingBar({ pct }: { pct: number }) {
+function MissingBar({
+  pct,
+  align = "end",
+}: {
+  pct: number;
+  align?: "start" | "end";
+}) {
   return (
-    <div className="flex items-center justify-end gap-2">
-      <span className="tabular w-11 text-right">
+    <div
+      className={cn(
+        "flex items-center gap-2",
+        align === "end" ? "justify-end" : "flex-row-reverse justify-end",
+      )}
+    >
+      <span className={cn("tabular w-11", align === "end" && "text-right")}>
         {pct === 0 ? "0%" : pct < 0.1 ? "<0.1%" : `${pct.toFixed(1)}%`}
       </span>
       <span
         aria-hidden
-        className="hidden h-1.5 w-14 overflow-hidden rounded-full bg-surface-100 sm:block"
+        className="block h-1.5 w-14 overflow-hidden rounded-full bg-surface-100"
       >
         <span
           className="block h-full rounded-full bg-navy-600"
@@ -198,93 +209,54 @@ export function DictionaryExplorer({
           description="Try a different search term or clear the filters."
         />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-xs">
-            <caption className="sr-only">
-              CAS dataset columns with type, example value, completeness and usage
-            </caption>
-            <thead>
-              <tr className="border-b border-surface-200 text-left text-[11px] text-surface-500">
-                <th scope="col" className="py-2 pr-3 font-medium">Field</th>
-                <th scope="col" className="py-2 pr-3 font-medium">Description</th>
-                <th scope="col" className="py-2 pr-3 font-medium">Type</th>
-                <th scope="col" className="py-2 pr-3 font-medium">Example</th>
-                <th scope="col" className="py-2 pr-3 text-right font-medium">Missing</th>
-                <th scope="col" className="py-2 pr-3 text-center font-medium">Dashboard</th>
-                <th scope="col" className="py-2 font-medium">Model</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...byGroup].map(([name, rows]) => (
-                <Fragment key={name}>
-                  <tr className="bg-surface-50">
-                    <th
-                      scope="colgroup"
-                      colSpan={7}
-                      className="px-2 py-1.5 text-left text-[10px] font-semibold tracking-wide text-surface-500 uppercase"
-                    >
-                      {name}{" "}
-                      <span className="font-normal normal-case">
-                        · {rows.length}
-                      </span>
-                    </th>
-                  </tr>
+        <>
+          {/* Phones and tablets: one card per column. Seven columns cannot fit, and a
+            sideways-scrolling table hides the description, the part people
+            came for. */}
+          <div className="space-y-2 lg:hidden">
+            {[...byGroup].map(([name, rows]) => (
+              // Collapsed by default: 82 open cards run past 16,000px on a
+              // phone. Any search or filter opens every group, and `key`
+              // remounts so the default is re-applied when that changes.
+              <details
+                key={`${name}-${isFiltered}`}
+                open={isFiltered}
+                className="group rounded-md border border-surface-200"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-[11px] font-semibold tracking-wide text-surface-600 uppercase">
+                  <span>
+                    {name}{" "}
+                    <span className="font-normal normal-case text-surface-400">
+                      · {rows.length}
+                    </span>
+                  </span>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    aria-hidden
+                    className="transition-transform group-open:rotate-180"
+                  >
+                    <path
+                      d="M3 4.5l3 3 3-3"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                  </svg>
+                </summary>
+                <ul className="space-y-2 px-3 pb-3">
                   {rows.map((f) => (
-                    <tr
+                    <li
                       key={f.name}
-                      className="border-b border-surface-100 align-top last:border-0"
+                      className="rounded-md border border-surface-200 p-3 text-xs"
                     >
-                      <th scope="row" className="py-2 pr-3 text-left font-normal">
-                        <code className="font-mono text-[12px] font-medium text-navy-900">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <code className="font-mono text-[12px] font-medium break-all text-navy-900">
                           {f.name}
                         </code>
-                        {f.derived ? (
-                          <Badge tone="info" className="ml-1.5 align-middle">
-                            Derived
-                          </Badge>
-                        ) : null}
-                      </th>
-                      <td className="max-w-md py-2 pr-3 leading-relaxed text-surface-700">
-                        {f.description ?? (
-                          <span className="text-surface-400 italic">
-                            Not yet documented
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 pr-3 whitespace-nowrap text-surface-700">
-                        {f.type}
-                        <span className="block text-[10px] text-surface-400">
-                          {formatNumber(f.distinct)} distinct
-                        </span>
-                      </td>
-                      <td className="max-w-40 py-2 pr-3">
-                        {f.example === null ? (
-                          <span className="text-surface-400">—</span>
-                        ) : (
-                          <code
-                            className="block truncate font-mono text-[11px] text-navy-800"
-                            title={f.example}
-                          >
-                            {f.example}
-                          </code>
-                        )}
-                      </td>
-                      <td className="py-2 pr-3 text-navy-900">
-                        <MissingBar pct={f.missingPct} />
-                      </td>
-                      <td className="py-2 pr-3 text-center">
-                        {f.usedInDashboard ? (
-                          <span className="font-semibold text-accent-600">
-                            Yes
-                          </span>
-                        ) : (
-                          <span className="text-surface-400">—</span>
-                        )}
-                      </td>
-                      <td className="py-2 whitespace-nowrap" title={ML_TITLE[f.ml]}>
-                        {f.ml === "No" ? (
-                          <span className="text-surface-400">—</span>
-                        ) : (
+                        {f.derived ? <Badge tone="info">Derived</Badge> : null}
+                        {f.ml !== "No" ? (
                           <Badge
                             tone={
                               f.ml === "Excluded"
@@ -293,18 +265,181 @@ export function DictionaryExplorer({
                                   ? "info"
                                   : "neutral"
                             }
+                            title={ML_TITLE[f.ml]}
                           >
-                            {ML_LABEL[f.ml]}
+                            Model: {ML_LABEL[f.ml]}
                           </Badge>
+                        ) : null}
+                      </div>
+                      <p className="mt-1.5 leading-relaxed text-surface-700">
+                        {f.description ?? (
+                          <span className="text-surface-400 italic">
+                            Not yet documented
+                          </span>
                         )}
-                      </td>
-                    </tr>
+                      </p>
+                      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+                        <div>
+                          <dt className="text-surface-400">Type</dt>
+                          <dd className="text-navy-900">
+                            {f.type} · {formatNumber(f.distinct)} distinct
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-surface-400">Missing</dt>
+                          <dd className="text-navy-900">
+                            <MissingBar pct={f.missingPct} align="start" />
+                          </dd>
+                        </div>
+                        <div className="min-w-0">
+                          <dt className="text-surface-400">Example</dt>
+                          <dd className="truncate font-mono text-navy-800">
+                            {f.example ?? "—"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-surface-400">Dashboard</dt>
+                          <dd className="text-navy-900">
+                            {f.usedInDashboard ? "Used" : "Not used"}
+                          </dd>
+                        </div>
+                      </dl>
+                    </li>
                   ))}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                </ul>
+              </details>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto lg:block">
+            <table className="w-full min-w-[720px] border-collapse text-xs">
+              <caption className="sr-only">
+                CAS dataset columns with type, example value, completeness and
+                usage
+              </caption>
+              <thead>
+                <tr className="border-b border-surface-200 text-left text-[11px] text-surface-500">
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    Field
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    Description
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    Type
+                  </th>
+                  <th scope="col" className="py-2 pr-3 font-medium">
+                    Example
+                  </th>
+                  <th scope="col" className="py-2 pr-3 text-right font-medium">
+                    Missing
+                  </th>
+                  <th scope="col" className="py-2 pr-3 text-center font-medium">
+                    Dashboard
+                  </th>
+                  <th scope="col" className="py-2 font-medium">
+                    Model
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...byGroup].map(([name, rows]) => (
+                  <Fragment key={name}>
+                    <tr className="bg-surface-50">
+                      <th
+                        scope="colgroup"
+                        colSpan={7}
+                        className="px-2 py-1.5 text-left text-[10px] font-semibold tracking-wide text-surface-500 uppercase"
+                      >
+                        {name}{" "}
+                        <span className="font-normal normal-case">
+                          · {rows.length}
+                        </span>
+                      </th>
+                    </tr>
+                    {rows.map((f) => (
+                      <tr
+                        key={f.name}
+                        className="border-b border-surface-100 align-top last:border-0"
+                      >
+                        <th
+                          scope="row"
+                          className="py-2 pr-3 text-left font-normal"
+                        >
+                          <code className="font-mono text-[12px] font-medium text-navy-900">
+                            {f.name}
+                          </code>
+                          {f.derived ? (
+                            <Badge tone="info" className="ml-1.5 align-middle">
+                              Derived
+                            </Badge>
+                          ) : null}
+                        </th>
+                        <td className="max-w-md py-2 pr-3 leading-relaxed text-surface-700">
+                          {f.description ?? (
+                            <span className="text-surface-400 italic">
+                              Not yet documented
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 pr-3 whitespace-nowrap text-surface-700">
+                          {f.type}
+                          <span className="block text-[10px] text-surface-400">
+                            {formatNumber(f.distinct)} distinct
+                          </span>
+                        </td>
+                        <td className="max-w-40 py-2 pr-3">
+                          {f.example === null ? (
+                            <span className="text-surface-400">—</span>
+                          ) : (
+                            <code
+                              className="block truncate font-mono text-[11px] text-navy-800"
+                              title={f.example}
+                            >
+                              {f.example}
+                            </code>
+                          )}
+                        </td>
+                        <td className="py-2 pr-3 text-navy-900">
+                          <MissingBar pct={f.missingPct} />
+                        </td>
+                        <td className="py-2 pr-3 text-center">
+                          {f.usedInDashboard ? (
+                            <span className="font-semibold text-accent-600">
+                              Yes
+                            </span>
+                          ) : (
+                            <span className="text-surface-400">—</span>
+                          )}
+                        </td>
+                        <td
+                          className="py-2 whitespace-nowrap"
+                          title={ML_TITLE[f.ml]}
+                        >
+                          {f.ml === "No" ? (
+                            <span className="text-surface-400">—</span>
+                          ) : (
+                            <Badge
+                              tone={
+                                f.ml === "Excluded"
+                                  ? "warning"
+                                  : f.ml === "Target"
+                                    ? "info"
+                                    : "neutral"
+                              }
+                            >
+                              {ML_LABEL[f.ml]}
+                            </Badge>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

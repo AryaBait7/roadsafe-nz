@@ -1,3 +1,4 @@
+import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { formatNumber, formatPercent, formatYearRange } from "@/lib/formatters";
 import type { DashboardSummary } from "@/types";
@@ -109,7 +110,9 @@ function Kpi({
   previous,
   period,
   icon,
+  className,
 }: {
+  className?: string;
   label: string;
   value: number;
   previous?: number;
@@ -117,7 +120,7 @@ function Kpi({
   icon: IconName;
 }) {
   return (
-    <Card className="px-3.5 py-3">
+    <Card className={cn("px-3.5 py-3", className)}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-[11px] text-surface-500">{label}</p>
@@ -181,9 +184,21 @@ export function KpiRow({
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-      {tiles.map((tile) => (
-        <Kpi key={tile.label} {...tile} period={period} />
+    // Five tiles never divide evenly into 2 or 3 columns, so the tablet grid
+    // runs on six tracks (3 + 2 tiles) and the lone fifth tile spans the row
+    // on phones, rather than leaving a hole.
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-6 xl:grid-cols-5">
+      {tiles.map((tile, index) => (
+        <Kpi
+          key={tile.label}
+          {...tile}
+          period={period}
+          className={cn(
+            index < 3 ? "md:col-span-2" : "md:col-span-3",
+            index === tiles.length - 1 && "col-span-2",
+            "xl:col-span-1",
+          )}
+        />
       ))}
     </div>
   );

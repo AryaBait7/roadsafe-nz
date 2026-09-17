@@ -11,7 +11,7 @@ import type { Hotspot } from "@/types";
  */
 const HotspotMap = dynamic(() => import("./HotspotMap"), {
   ssr: false,
-  loading: () => <Skeleton className="h-[420px] w-full" />,
+  loading: () => <Skeleton className="h-[420px] max-h-[60svh] w-full lg:max-h-none" />,
 });
 
 export function HotspotMapLoader(props: {

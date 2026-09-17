@@ -260,10 +260,14 @@ export default function CrashMap({
       </div>
 
       {/* Explicit height, deliberately not flex-1: a height that resolves
-          after Leaflet initialises is what left the canvas stale. */}
+          after Leaflet initialises is what left the canvas stale. On phones
+          the height is capped so a one-finger swipe that lands on the map
+          still leaves page around it to scroll by. `isolate` contains
+          Leaflet's pane z-indices (400–1000), which otherwise paint over the
+          mobile navigation drawer. */}
       <div
         style={{ height }}
-        className="overflow-hidden rounded-md border border-navy-800"
+        className="isolate max-h-[60svh] overflow-hidden rounded-md border border-navy-800 lg:max-h-none"
       >
         <MapContainer
           className="map-dark"

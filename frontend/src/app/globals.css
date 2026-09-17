@@ -93,6 +93,26 @@
 
 /* --- Landing page cinematic intro -------------------------------------- */
 
+/* Where the RoadSafe sign stands, in world units (see RoadScene). Narrow
+   screens get an overhead gantry centred on the road: projected, a roadside
+   board 255 units out leaves the frame before the intro ends on anything
+   narrower than ~1200px. Posts sit at the road edges (ROAD_HALF + 26). */
+.road-sign-layout {
+  --sign-x: 0px;
+  --sign-turn: 0deg;
+  --sign-post-left: -161px;
+  --sign-post-right: 161px;
+}
+
+@media (width >= 80rem) {
+  .road-sign-layout {
+    --sign-x: 255px;
+    --sign-turn: -14deg;
+    --sign-post-left: 209px;
+    --sign-post-right: 301px;
+  }
+}
+
 /* Lane markings travelling toward the viewer. The road plane is rotated in
    3D, so scrolling its background straight down the Y axis is foreshortened
    by the perspective transform: markings start slow near the horizon and

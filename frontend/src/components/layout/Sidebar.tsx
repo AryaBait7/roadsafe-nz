@@ -118,9 +118,28 @@ export function Sidebar({ options }: { options?: FilterOptions }) {
             />
           </svg>
         </button>
-        <span className="text-sm font-semibold text-white">
+        <Link href="/" className="text-sm font-semibold text-white">
           RoadSafe<span className="text-safety-400"> NZ</span>
-        </span>
+        </Link>
+        {/* The filters live in the drawer on small screens; a labelled
+            control makes that discoverable, where the hamburger alone does not. */}
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          aria-expanded={isDrawerOpen}
+          aria-controls="mobile-nav"
+          className="ml-auto flex h-8 items-center gap-1.5 rounded-md border border-navy-700 px-2.5 text-xs font-medium text-surface-200 hover:bg-navy-800 hover:text-white"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+            <path
+              d="M2 4h12M4.5 8h7M7 12h2"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+          Filters
+        </button>
       </div>
 
       {isDrawerOpen ? (

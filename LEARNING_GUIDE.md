@@ -814,7 +814,19 @@ print dialog with print-only styles.
 
 ---
 
-## 36. Verifying work instead of assuming it
+## 36. Stacking contexts, and a responsive layout found by using it
+
+**What**: the overflow audit passed at every width, but opening the mobile drawer on the map page showed the map painted *over* it. `z-index` only competes within a stacking context. Leaflet's panes (z-index 400–1000) sat in the root context and beat the drawer's `z-50`. `isolation: isolate` on the map wrapper gives Leaflet its own context. Separately, the landing sign's exit time per viewport came from the projection maths (`x' = x · P / (P − z)`), because the preview pane cannot run the animation.
+
+**Interview questions**
+- What creates a stacking context? (position + z-index, opacity < 1, transform, filter, isolation)
+- Why can an element with z-index 1000 appear under one with z-index 50?
+- Why cap the map's height on phones rather than disable dragging?
+- How would you test responsive layouts automatically? (Playwright at several viewports plus visual snapshots)
+
+---
+
+## 37. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

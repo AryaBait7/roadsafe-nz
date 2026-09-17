@@ -4,7 +4,21 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 11 (Data Dictionary) — complete.** Next up: Stage 12 (Responsive/mobile).
+**Stage 12 (Responsive/mobile) — complete.** Next up: Stage 13 (Animation + UX polish).
+
+### Stage 12 — Responsive/mobile (done 2026-09-17)
+
+Every route was measured at 375px and 768px. The check was document overflow plus any element whose right edge passed the viewport outside an intentional scroll container. After the fixes, all nine routes report zero offenders at both widths. Measuring alone did not find the problems that mattered; using the pages did:
+
+- **The map painted over the mobile navigation drawer.** Leaflet's panes carry z-index 400–1000 and nothing contained them. `isolate` on both map wrappers creates a stacking context for them. The bug predates this stage and appeared at any width below 1024px.
+- **Maps were a scroll trap on phones.** A 70vh map leaves little page to swipe on. Map height is now capped at 60svh below `lg`, measured at 485px of 812.
+- **The filters were not discoverable.** On small screens they live in the drawer, behind an unlabelled hamburger. The top bar now has a labelled "Filters" button, and the wordmark links home.
+- **The fifth KPI tile sat alone** in the 2-column grid. It now spans the row on phones, and tablets use a six-track grid (3 + 2 tiles).
+- **Data dictionary:** below `lg` each column is a card, grouped into collapsible sections. They are closed by default, since 82 open cards ran to 16,790px, and any search or filter opens the matching groups. The table's minimum width dropped to 720px so it fits beside the sidebar at 1024px.
+- **Landing intro:** at 375px the roadside sign left the screen. Modelling the projection showed it exits by 4.4s on a phone and 5.1s on a tablet, against 9.6s on desktop. Scaling the stage enough to keep it would have shrunk the road. Below 1280px the sign is now an overhead gantry centred on the carriageway, switched by CSS variables. The stage is also scaled 0.64/0.82 on phones and small tablets. Measured at the 8s distance, the board spans 29–346px of 375.
+
+**Verified:** zero overflow on all routes at 375px and 768px; the drawer sits above the map (hit test); the Filters button opens the focused dialog; a "weather" search opens 2 groups with the 3 expected cards; the desktop sign layout is unchanged. Lint, tsc and build are clean. Intro *motion* still could not be watched here, because rAF stalls in the preview pane.
+
 
 ### Stage 11 — Data Dictionary (done 2026-09-17)
 
@@ -114,8 +128,8 @@ Seven requested changes, all against the existing components — no rebuild.
 | 9 | ML Insights | ✅ Complete |
 | 10 | Reports | ✅ Complete |
 | 11 | Data Dictionary | ✅ Complete |
-| 12 | Responsive/mobile | ⏭️ Next — 🟡 Shell and all page grids collapse to one column; no dedicated phone pass yet |
-| 13 | Animation + UX polish | 🔲 |
+| 12 | Responsive/mobile | ✅ Complete |
+| 13 | Animation + UX polish | ⏭️ Next |
 | 14 | Loading/error/empty states | 🟡 Empty states wired on every data page; route-level loading/error boundaries pending |
 | 15 | Consistency + accessibility pass | 🔲 |
 | 16 | Frontend testing + performance | 🔲 |
@@ -361,7 +375,7 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 12 — responsive pass** at 375px and 768px on every page. This includes a card layout for the data dictionary on phones.
-2. **Stages 13–16** — animation polish, route-level loading/error boundaries, consistency and accessibility audit, tests and performance.
+1. **Stage 13 — animation and UX polish.** Remove the legacy keyframes in globals.css (`road-travel`, `scenery-drift`, `scroll-hint`) if unused, and review the page-transition and hover states.
+2. **Stages 14–16** — route-level loading/error boundaries, consistency and accessibility audit, tests and performance.
 3. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.
 4. **Open data items before modelling:** drop the two 100%-empty columns (`intersection`, `crashRoadSideRoad`); decide fill-0 vs missing for the 57.3%-missing roadside-object block; investigate the grid cell at [-47.5, 179.0] tagged region "Unknown".

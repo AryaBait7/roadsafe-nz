@@ -59,7 +59,6 @@ const ROAD_LENGTH = MARKING_COUNT * LOOP;
  * outside the looping world and rides cumulative distance instead.
  */
 const SIGN_Z = -2100;
-const SIGN_X = 255;
 
 /** Camera speed per phase, in world units per second. */
 const SPEED: Record<IntroPhase, number> = {
@@ -121,22 +120,39 @@ function GuardRail({ side }: { side: -1 | 1 }) {
  * rather than scaled: its size, position and the rate it grows all fall out
  * of the same projection as the road. Keeping it in the DOM also keeps the
  * wordmark crisp at every distance and themeable from the same tokens.
+ *
+ * Below 1280px it becomes an overhead gantry centred over the carriageway.
+ * Projected, a roadside board 255 units out leaves a 375px screen by the
+ * title phase; shrinking the stage enough to keep it would shrink the road
+ * with it. The offsets are CSS variables (see `.road-sign-layout` in
+ * globals.css) so the switch needs no JavaScript and no re-render.
  */
 function RoadSign() {
   return (
     <>
-      {/* Two support posts, planted on the shoulder. */}
-      {[-46, 46].map((offset) => (
+      {/* Two support posts: planted on the shoulder beside the board, or at
+          the road edges when it spans the carriageway. */}
+      {["var(--sign-post-left)", "var(--sign-post-right)"].map((x) => (
         <div
-          key={offset}
+          key={x}
           className="absolute top-1/2 left-1/2 bg-surface-500/70"
           style={{
             width: 9,
             height: 132,
-            transform: `translate(-50%, -50%) translate3d(${SIGN_X + offset}px, ${GROUND_Y - 62}px, 0px)`,
+            transform: `translate(-50%, -50%) translate3d(${x}, ${GROUND_Y - 62}px, 0px)`,
           }}
         />
       ))}
+
+      {/* Gantry crossbar, only in the overhead layout. */}
+      <div
+        className="absolute top-1/2 left-1/2 bg-surface-500/70 xl:hidden"
+        style={{
+          width: (ROAD_HALF + 26) * 2,
+          height: 7,
+          transform: `translate(-50%, -50%) translate3d(0px, ${GROUND_Y - 128}px, 0px)`,
+        }}
+      />
 
       {/* The board. Angled slightly toward the carriageway, the way a real
           roadside sign is, and lit as if catching headlights at dusk. */}
@@ -144,7 +160,7 @@ function RoadSign() {
         className="absolute top-1/2 left-1/2 rounded-md border-2 border-safety-400 bg-navy-900 px-5 py-4 text-center"
         style={{
           width: 300,
-          transform: `translate(-50%, -50%) translate3d(${SIGN_X}px, ${GROUND_Y - 190}px, 0px) rotateY(-14deg)`,
+          transform: `translate(-50%, -50%) translate3d(var(--sign-x), ${GROUND_Y - 190}px, 0px) rotateY(var(--sign-turn))`,
           boxShadow:
             "0 0 34px rgba(255,199,44,0.30), 0 0 90px rgba(255,199,44,0.12), inset 0 1px 0 rgba(255,255,255,0.14)",
         }}
@@ -290,9 +306,14 @@ export function RoadScene({
 
       {/* The 3D scene. perspective-origin sets where the vanishing point sits;
           just above centre puts the horizon high enough for the road to fill
-          the lower frame. */}
+          the lower frame.
+
+          World units are pixels, so on a phone the roadside sign would sit
+          past the screen edge. The whole stage is scaled down about the
+          vanishing point instead; the scale lives on this plain parent, never
+          on a preserve-3d element, so the scene is not flattened. */}
       <div
-        className="absolute inset-0"
+        className="road-sign-layout absolute inset-0 origin-[50%_46%] [scale:0.64] sm:[scale:0.82] md:[scale:1]"
         style={{
           perspective: `${PERSPECTIVE}px`,
           perspectiveOrigin: "50% 46%",

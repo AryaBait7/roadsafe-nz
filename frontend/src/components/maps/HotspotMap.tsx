@@ -100,7 +100,7 @@ export default function HotspotMap({
 
       <div
         style={{ height }}
-        className="overflow-hidden rounded-md border border-navy-800"
+        className="isolate max-h-[60svh] overflow-hidden rounded-md border border-navy-800 lg:max-h-none"
       >
         <MapContainer
           className="map-dark"

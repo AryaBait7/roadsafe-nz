@@ -14,7 +14,7 @@ import type { MapCrashPoint } from "@/types";
  */
 const CrashMap = dynamic(() => import("./CrashMap"), {
   ssr: false,
-  loading: () => <Skeleton className="h-[70vh] w-full" />,
+  loading: () => <Skeleton className="h-[70vh] max-h-[60svh] w-full lg:max-h-none" />,
 });
 
 export function CrashMapLoader(props: {
