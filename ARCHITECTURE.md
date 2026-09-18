@@ -1,7 +1,7 @@
 # RoadSafe NZ — Architecture
 
 How the system is put together, what talks to what, and where the seams are.
-Reflects the implementation as of Stage 22 (2026-09-18).
+Reflects the implementation as of Stage 23 (2026-09-18).
 
 ## Target architecture
 
@@ -31,9 +31,9 @@ order — see [DECISIONS.md](DECISIONS.md) #10 and #21.
 
 | Layer | Target | Today |
 |---|---|---|
-| Data source | PostgreSQL/PostGIS via Express | Pre-aggregated JSON fixtures on disk, generated from the real CAS data |
-| Aggregation | SQL `GROUP BY` in the database | In-memory group-by over a cube (`services/dev/crashCube.ts`) |
-| Transport | HTTP to Express | Express API built and tested (Stage 22); the frontend still calls services directly until Stage 23 |
+| Data source | PostgreSQL/PostGIS via Express | Pre-aggregated JSON read by the API; the frontend no longer touches files |
+| Aggregation | SQL `GROUP BY` in the database | In-memory group-by over a cube, in the API (`backend/src/data/cube.ts`) |
+| Transport | HTTP to Express | **Done.** Pages render per request and fetch from the API, cached 60s |
 | ML metrics | Trained model + SHAP | XGBoost trained by `train_model.py`; metrics and permutation importance shipped as fixtures. SHAP is Stage 21 |
 | ML training-data facts | Served by the API | Real, computed from the cube (`getTrainingDataProfile`) |
 | Exports | Server-side report generation | CSV built in the browser from rendered rows; print-to-PDF |
@@ -92,10 +92,11 @@ Configuration is environment-only (`PORT`, `CORS_ORIGIN`, `FIXTURES_DIR`); see
 `backend/.env.example`. Nothing is hard-coded and no credentials are involved
 while the source is files.
 
-**Deliberate duplication, ending at Stage 23.** The cube and services exist in
-both `frontend/src/services` and `backend/src` during this stage. They were
-copied unchanged, both suites assert the same reconciled totals, and the
-frontend copy is deleted when its services start calling the API.
+**The duplication is gone.** Stage 23 deleted the frontend's `services/dev/`,
+`services/fixtures.ts` and `lib/stats.ts`; the aggregation exists once, here.
+The frontend's services are now thin `apiGet` calls, and its tests cover the
+client (query building, error mapping) while the backend's assert the
+figures.
 
 ## Service inventory
 
@@ -135,7 +136,7 @@ cas_crash_data_features.csv (82 columns, gitignored)
    |                                   models/severity_model.joblib (gitignored)
    |  explain_model.py              TreeSHAP + every scenario scored in advance
    |                                -> shap-summary.json, scenarios.json
-frontend/src/data/fixtures/*.json (~7.4MB, committed; rewritten only when data changes)
+data/fixtures/*.json (~7.6MB, committed; rewritten only when data changes)
    |  pipeline_run.json             snapshot sha256 + content fingerprint + step timings (committed)
    |  loadFixture() + services/dev/crashCube.ts
 services
@@ -331,7 +332,7 @@ Vitest (`npm test`). Service tests run the real services against the committed f
   intro and count-up *motion* have only been verified mathematically and by
   final state, not watched. Needs a real-browser check.
 - `prefers-reduced-motion` is implemented but was not browser-emulated.
-- `loadFixture` reads `src/data/fixtures` via `process.cwd()`. Fine for
-  `next dev` / `next start`; a `standalone` build would not include it. Goes
-  away at Stage 23.
+- The API reads `data/fixtures` via `FIXTURES_DIR`, resolved from its working
+  directory. A deployment sets that explicitly; Stage 18's database replaces
+  it.
 - Nothing is deployed; the only URL is `http://localhost:3100`.

@@ -1,10 +1,11 @@
 """
-Generate the frontend's development data source from the real CAS dataset.
+Generate the API's data source from the real CAS dataset.
 
-The features CSV is 299MB / 705,609 rows. Neither a browser nor the future
-Express API will ever see raw rows — both will deal in aggregates. So this
-script pre-computes exactly the aggregates the API will later serve, and the
-frontend reads them as JSON. The *shape* of these files is the API contract.
+The features CSV is 299MB / 705,609 rows. Neither a browser nor the Express
+API deals in raw rows — both work from aggregates. This script pre-computes
+exactly the aggregates the API serves, and the shape of these files is the
+API contract. (The module keeps its original name so the other pipeline
+scripts' imports stay stable.)
 
 Everything written here is derived from real CAS data. Fixtures that are not
 real (the ML ones, until a model exists) are authored separately and marked
@@ -40,13 +41,9 @@ FEATURES_PATH = (
     / "processed"
     / "cas_crash_data_features.csv"
 )
-OUTPUT_DIR = (
-    Path(__file__).resolve().parent.parent.parent
-    / "frontend"
-    / "src"
-    / "data"
-    / "fixtures"
-)
+# Top-level, because the API serves these now — the web app does not read
+# them (Stage 23).
+OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "fixtures"
 
 # Only the columns the frontend actually needs — reading all 82 wastes memory.
 USED_COLUMNS = [

@@ -957,7 +957,23 @@ Two runs gave the same fingerprint and changed no fixture.
 
 ---
 
-## 46. Verifying work instead of assuming it
+## 46. Swapping a data source behind a stable contract
+
+**What**: the frontend moved from reading files to calling an API without a single page or component changing, because every service had returned `ApiResponse<T>` since Stage 1. The work was four service bodies and an HTTP client. Three things needed thought:
+- **Request shape**: endpoints that answer several questions at once (cells + grid + unmapped count) are fetched once; Next memoises identical fetches per render, so three accessors cost one request.
+- **Failure**: an unreachable API is a 503 with a fix in the message, distinct from a 500.
+- **Build coupling**: prerendering made the build require a live API, so the pages became request-rendered.
+
+**Interview questions**
+- What does designing the response envelope first let you change later?
+- Where should aggregation live, and what did you gain by moving it out of the frontend?
+- How do you keep two implementations honest while both exist? What ends the duplication?
+- What happens to your site when the API is down, and what *should* happen?
+- Why did the build fail when the API was down, and what were the options?
+
+---
+
+## 47. Verifying work instead of assuming it
 
 **What**: after building the service layer, a temporary route exercised every
 service and re-totalled the results: 705,609 crashes, 41,263 serious, 6,182

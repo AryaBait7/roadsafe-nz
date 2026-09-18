@@ -10,6 +10,13 @@ import { DictionaryExplorer } from "@/features/data-dictionary/DictionaryExplore
 import { formatNumber } from "@/lib/formatters";
 import { getDataDictionary } from "@/services/datasetService";
 
+/**
+ * Rendered per request: the data comes from the API, so the build must not
+ * depend on it being up. Fetches are still cached for 60s (see http.ts), so
+ * repeated views cost one upstream request, not one per visitor.
+ */
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "Data Dictionary" };
 
 /**

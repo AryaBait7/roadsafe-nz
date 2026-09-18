@@ -37,6 +37,13 @@ import {
 import { getContributingFactors } from "@/services/analyticsService";
 import { getFeatureImportance, getModelMetrics } from "@/services/mlService";
 
+/**
+ * Rendered per request: the data comes from the API, so the build must not
+ * depend on it being up. Fetches are still cached for 60s (see http.ts), so
+ * repeated views cost one upstream request, not one per visitor.
+ */
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "Dashboard" };
 
 export default async function DashboardPage({
@@ -371,11 +378,10 @@ export default async function DashboardPage({
             </CardHeader>
             <CardBody className="flex flex-1 flex-col justify-between gap-3">
               <p className="text-[11px] leading-relaxed text-surface-500">
-                The classifier estimates how severe a crash is
-                likely to be <em>given that a crash occurred</em>. It cannot
-                predict whether a crash will happen: this dataset contains only
-                crashes, so it holds no examples of roads where nothing went
-                wrong.
+                The classifier estimates how severe a crash is likely to be{" "}
+                <em>given that a crash occurred</em>. It cannot predict whether
+                a crash will happen: this dataset contains only crashes, so it
+                holds no examples of roads where nothing went wrong.
               </p>
               <Link
                 href="/ml-insights"

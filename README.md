@@ -10,8 +10,7 @@ the app states the model's limits rather than overselling it.
 ## Status
 
 - **Frontend: complete.** Nine pages (landing, dashboard, trends, map, hotspots,
-  risk factors, ML insights, reports, data dictionary), all backed by real
-  aggregates of the CAS data.
+  risk factors, ML insights, reports, data dictionary), all served by the API.
 - **Data pipeline: reproducible** from a pinned download (Stage 17).
 - **Analytics (Stage 19):** confidence intervals, small-area shrinkage, and
   crude vs adjusted associations.
@@ -19,8 +18,8 @@ the app states the model's limits rather than overselling it.
   random ranking.
 - **Explainability (Stage 21):** SHAP contributions and a scenario explorer
   that shows how much evidence each combination actually has.
-- **API (Stage 22):** Express + TypeScript, 22 routes, tested against the same
-  reconciled totals as the frontend.
+- **API (Stage 22–23):** Express + TypeScript, 22 routes. The frontend reads
+  everything through it; aggregation lives in one place.
 - **Blocked:** PostgreSQL + PostGIS (Stage 18) — Docker will not start here.
 - **Planned:** explainability, API and AWS (Stages 21–27).
 
@@ -48,7 +47,8 @@ data-pipeline/
   data/raw/         downloaded CAS CSV + manifest.json (CSV gitignored)
   data/processed/   cleaned + feature CSVs, pipeline_run.json (gitignored)
   notebooks/        exploration and EDA
-frontend/           Next.js app; reads fixtures in src/data/fixtures via services/
+data/fixtures/      pipeline output, served by the API (committed, ~7.6MB)
+frontend/           Next.js app; fetches everything from the API
 backend/
   src/              routes, services, fixtures data source
   tests/            supertest API tests
@@ -84,13 +84,13 @@ npm test
 ```
 
 It reads the pipeline's aggregates (`FIXTURES_DIR`, default
-`../frontend/src/data/fixtures`) until the Stage 18 database is available. See
+`../data/fixtures`) until the Stage 18 database is available. See
 `backend/.env.example` for `PORT` and `CORS_ORIGIN`.
 
 ## Running the frontend
 
-The frontend ships with the generated fixtures, so it runs without the
-pipeline. From `frontend/`:
+**Start the API first** — the pages fetch from it (`API_BASE_URL`, default
+`http://localhost:4000`). From `frontend/`:
 
 ```bash
 npm install
@@ -107,7 +107,7 @@ npm test
 20. ✅ Severity model (baseline → logistic regression → random forest → XGBoost)
 21. ✅ Explainability (SHAP)
 22. ✅ Node/Express REST API
-23. 🔲 Connect frontend to the API
+23. ✅ Connect frontend to the API
 24–26. 🔲 AWS deployment, CI/CD, security, monitoring, final testing
 27. 🔲 Portfolio documentation
 

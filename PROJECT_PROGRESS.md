@@ -4,7 +4,27 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 22 (REST API) — complete. Stage 18 (PostgreSQL + PostGIS) — paused, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+**Stage 23 (Frontend on the API) — complete. Stage 18 (PostgreSQL + PostGIS) — paused, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+
+### Stage 23 — Connect the frontend to the API (done 2026-09-18)
+
+The frontend no longer reads data files. Every service is now a call to the API, and **the duplication from Stage 22 is gone**: `services/dev/crashCube.ts`, `services/fixtures.ts` and `lib/stats.ts` were deleted from the frontend, which is about 700 lines of aggregation that now exists once, in the backend.
+
+**What changed, and what did not.** Service bodies and `http.ts`. No page, component or type changed, because every service still returns `ApiResponse<T>` — the point of fixing that shape in Stage 1.
+
+- Endpoints that answer several questions at once (map cells + grid resolution + unmapped count; hotspot ranking + unattributed count) are fetched once and read by the existing accessors. Next memoises identical fetches within a render, so `getMapPoints`, `getMapGridDegrees` and `getUnmappedCrashCount` together cost one request.
+- Fetches carry `revalidate: 60` and a 15s timeout.
+- `ApiError` carries status and code. An unreachable API becomes a 503 saying exactly what to do (`cd backend && npm run dev`), and the underlying network error is logged server-side.
+
+**Pages now render per request.** With data behind HTTP, prerendering at build time meant the build failed whenever the API was down — verified: the build broke on `/crash-trends`. All nine data pages are `force-dynamic`, so **the build no longer needs the API**, while fetch caching keeps repeat views cheap.
+
+**A discrepancy the wiring exposed.** With a region filter, Map Explorer showed "37,678 crashes" beside a filter bar reading 37,676. Not a bug in either: grid cells are assigned to the region most of their crashes fall in, so two crashes in boundary-straddling cells count as Otago on the map and as a neighbour elsewhere. Nationally the map reconciles exactly (705,608 + 1 unmapped). The page now states the difference and why, instead of showing two numbers that disagree.
+
+**Verified end to end** with both servers running: dashboard, hotspots, risk factors, ML insights, data dictionary and a region-filtered map all render real figures through the API. With the API stopped, cached views keep working and an uncached one shows the error boundary with the actionable message; restarting the API recovers without intervention (Tasman 2011–2026 → 5,043 crashes).
+
+**The data moved too.** `frontend/src/data/fixtures` became top-level `data/fixtures`: the web app no longer reads those files, so shipping them inside it was misleading, and a deployment needs them next to the API. The pipeline, the API default and `FIXTURES_DIR` were updated together; all three suites pass against the new location.
+
+**Tests: 29 frontend, 20 backend.** The reconciliation assertions moved to the backend, where the aggregation now lives, and the statistics tests moved with `stats.ts`. The frontend gained `http.test.ts` (query building, envelope pass-through, unreachable API, non-JSON error bodies) with the network faked, and `mapPack.test.ts` became a real unit test instead of one that needed data on disk.
 
 ### Stage 22 — Node/Express REST API (done 2026-09-18)
 
@@ -459,8 +479,8 @@ Seven requested changes, all against the existing components — no rebuild.
 | 20 | Severity model | ✅ Complete |
 | 21 | Explainability (SHAP) | ✅ Complete |
 | 22 | Node/Express REST API | ✅ Complete |
-| 23 | Connect frontend to the API | ⏭️ Next |
-| 24 | AWS deployment |  |
+| 23 | Connect frontend to the API | ✅ Complete |
+| 24 | AWS deployment | ⏭️ Next |
 | 25 | CI/CD, security, monitoring |  |
 | 26 | Final testing |  |
 | 27 | Portfolio documentation |  |
@@ -702,7 +722,7 @@ Data/backend stages (now scheduled after the frontend): PostgreSQL/PostGIS, anal
 
 ## Next steps
 
-1. **Stage 23 — connect the frontend to the API.** Switch service bodies to `apiGet`, delete `frontend/src/services/dev/` and the duplicated aggregation, and decide what the pages do when the API is down (the Stage 14 error boundary already covers a failed fetch).
+1. **Stage 24 — AWS deployment.** Needs decisions and a budget: where the API runs, where the site is hosted, whether RDS replaces the fixture files, and what the monthly cost is. Nothing will be created in AWS without approval.
 2. **Stage 18 — PostgreSQL + PostGIS** remains blocked on Docker; see that section for options and resume steps.
 3. **Worth doing to the model:** refit without the "Unknown" levels, which SHAP shows it leaning on (light Unknown pushes −1.49).
 4. **Checks the preview pane cannot do** (it does not run `requestAnimationFrame`): watch the landing intro and count-ups in a real browser, and emulate `prefers-reduced-motion`.

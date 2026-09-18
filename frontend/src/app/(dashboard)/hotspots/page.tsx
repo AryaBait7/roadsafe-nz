@@ -24,6 +24,13 @@ import {
 } from "@/services/analyticsService";
 import type { CrashFilters, Hotspot } from "@/types";
 
+/**
+ * Rendered per request: the data comes from the API, so the build must not
+ * depend on it being up. Fetches are still cached for 60s (see http.ts), so
+ * repeated views cost one upstream request, not one per visitor.
+ */
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "Hotspots" };
 
 /** Preserves the active filters when linking to an area. */

@@ -455,3 +455,19 @@ Record of significant decisions and the reasoning behind them, so the "why" surv
 **Decision**: `404` for unknown routes, `503` with the exact remedy for a missing fixture, `500` generic for everything else; every response carries `{ error: { code, message } }`.
 
 **Why**: a missing fixture is an operator problem whose fix is a command, so naming it saves a debugging session. An unexpected error could carry file paths or stack traces, which belong in the server log, not in a response. Machine-readable codes mean the frontend can distinguish "no data yet" from "something broke" without parsing prose.
+
+---
+
+## 54. Pages render per request, so the build never needs the API
+
+**Decision**: every data page is `force-dynamic`. Freshness comes from `revalidate: 60` on the fetches rather than from build-time prerendering.
+
+**Why**: with the data behind HTTP, prerendering made the build depend on a running API — confirmed by a build that failed on `/crash-trends` while the API was down. A deployment that cannot build unless another service happens to be up is a bad trade for a page that is regenerated every 60 seconds anyway. Fetch caching means repeat views still cost one upstream request per minute, not one per visitor.
+
+---
+
+## 55. A region-filtered map may differ by a crash or two, and says so
+
+**Decision**: Map Explorer states the difference between its own total and the count shown elsewhere whenever a region filter produces one.
+
+**Why**: a grid cell can straddle a boundary, and each is assigned to the region most of its crashes fall in — a choice made when the grid was built. That makes the map total for Otago two crashes higher than the cube's. Both are defensible; showing them side by side without explanation is not. Nationally the map still reconciles exactly.

@@ -4,22 +4,14 @@ import path from "node:path";
 /**
  * The API's data source.
  *
- * Reads the aggregates the Python pipeline produces. This is the same data
- * the frontend reads directly today; Stage 23 points the frontend at this API
- * instead, and Stage 18's PostGIS database eventually replaces the files —
- * only this module changes when it does.
+ * Reads the aggregates the Python pipeline writes to `data/fixtures`. Since
+ * Stage 23 nothing else reads them: the web app fetches from this API. When
+ * Stage 18's PostGIS database lands, only this module changes.
  *
  * Fixtures are cached as *promises*, so concurrent requests during the first
  * read share one parse instead of each decoding the 6MB cube.
  */
-const DEFAULT_DIR = path.resolve(
-  process.cwd(),
-  "..",
-  "frontend",
-  "src",
-  "data",
-  "fixtures",
-);
+const DEFAULT_DIR = path.resolve(process.cwd(), "..", "data", "fixtures");
 
 export const FIXTURES_DIR = process.env.FIXTURES_DIR
   ? path.resolve(process.env.FIXTURES_DIR)

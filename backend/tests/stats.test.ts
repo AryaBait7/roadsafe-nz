@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estimateShrinkagePrior, shrinkRate, wilsonInterval } from "./stats";
+import { estimateShrinkagePrior, shrinkRate, wilsonInterval } from "../src/stats";
 
 describe("wilsonInterval", () => {
   it("matches the textbook value for 10 of 100", () => {

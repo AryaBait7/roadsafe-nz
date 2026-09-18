@@ -17,6 +17,14 @@ import {
   getMapPoints,
   getUnmappedCrashCount,
 } from "@/services/crashService";
+import { getSummary } from "@/services/dashboardService";
+
+/**
+ * Rendered per request: the data comes from the API, so the build must not
+ * depend on it being up. Fetches are still cached for 60s (see http.ts), so
+ * repeated views cost one upstream request, not one per visitor.
+ */
+export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Map Explorer" };
 
@@ -25,13 +33,21 @@ export default async function MapExplorerPage({
 }: PageProps<"/map-explorer">) {
   const filters = parseFilters(await searchParams);
 
-  const [points, gridDegrees, unmapped] = await Promise.all([
+  const [points, gridDegrees, unmapped, summary] = await Promise.all([
     getMapPoints(filters),
     getMapGridDegrees(),
     getUnmappedCrashCount(filters),
+    getSummary(filters),
   ]);
 
   const totalCrashes = points.data.reduce((sum, p) => sum + p.crashCount, 0);
+
+  // A grid cell can straddle a boundary, and each one is assigned to the
+  // region most of its crashes fall in. Under a region filter that makes the
+  // map's total differ slightly from the count everywhere else, so the page
+  // states the difference rather than showing two numbers that disagree.
+  const boundaryDifference =
+    totalCrashes + unmapped - summary.data.totalCrashes;
 
   // Only the filters the cell grain can actually honour are applied here.
   // Saying so is better than a map that quietly ignores half the sidebar.
@@ -60,6 +76,9 @@ export default async function MapExplorerPage({
                 figures.
                 {unmapped > 0
                   ? ` ${formatNumber(unmapped)} ${unmapped === 1 ? "crash has" : "crashes have"} no usable location and ${unmapped === 1 ? "is" : "are"} not shown.`
+                  : null}
+                {filters.region && boundaryDifference !== 0
+                  ? ` Cells are assigned to the region most of their crashes fall in, so this is ${formatNumber(Math.abs(boundaryDifference))} ${Math.abs(boundaryDifference) === 1 ? "crash" : "crashes"} ${boundaryDifference > 0 ? "more" : "fewer"} than the ${formatNumber(summary.data.totalCrashes)} counted for ${filters.region} elsewhere, from cells that straddle the boundary.`
                   : null}
               </CardDescription>
             </div>

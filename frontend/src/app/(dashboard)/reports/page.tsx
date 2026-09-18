@@ -21,6 +21,13 @@ import {
 } from "@/services/crashService";
 import { getHotspots, getSeverityLift } from "@/services/analyticsService";
 
+/**
+ * Rendered per request: the data comes from the API, so the build must not
+ * depend on it being up. Fetches are still cached for 60s (see http.ts), so
+ * repeated views cost one upstream request, not one per visitor.
+ */
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "Reports" };
 
 const pp = (lift: number) =>
@@ -169,7 +176,8 @@ export default async function ReportsPage({
       title: "Model evaluation report",
       description:
         "Metrics, confusion matrix and SHAP explanations for the severity model.",
-      needs: "Server-side report generation (Stage 22); the model itself is trained.",
+      needs:
+        "Server-side report generation (Stage 22); the model itself is trained.",
     },
     {
       title: "Scheduled summaries",
