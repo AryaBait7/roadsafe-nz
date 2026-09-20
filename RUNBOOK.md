@@ -35,6 +35,21 @@ and behaves the same in PowerShell, cmd and bash.
 That is it. No local backend needed — `frontend/.env.local` points the app at
 the deployed API.
 
+## "EADDRINUSE: address already in use :::3100"
+
+Something is already listening on 3100 — usually a dev server from an earlier
+terminal you closed without stopping. Either open http://localhost:3100 and
+use the one already running, or free the port:
+
+```powershell
+Get-NetTCPConnection -LocalPort 3100 -State Listen | Select-Object -Expand OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }
+```
+
+Then start it again with `npm run dev:3100`.
+
+Close a dev server properly with Ctrl+C in its terminal, and this will not
+come up.
+
 ## Fallback: no internet, or AWS misbehaving
 
 Run everything locally instead. Two terminals:
