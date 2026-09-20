@@ -1,0 +1,38 @@
+# Amplify Hosting build spec.
+#
+# The Next.js app lives in frontend/, so this is the monorepo form: `appRoot`
+# tells Amplify which directory to build in, and the whole file must sit at the
+# repository root.
+#
+# The app needs Amplify's SSR platform (WEB_COMPUTE), not static hosting: every
+# data page is `force-dynamic` and renders per request against the API. A
+# static export would have to give that up.
+#
+# `npm run build` does not need the API to be reachable — that is exactly why
+# the pages were made dynamic in Stage 23 — so a build cannot fail because
+# Lambda is cold.
+#
+# Set API_BASE_URL in the Amplify console's environment variables to the
+# deployed HTTP API. Without it the build still succeeds and the app falls back
+# to http://localhost:4000, which will not resolve once hosted.
+version: 1
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            # `ci` rather than `install`: builds should use the committed
+            # lockfile exactly, not re-resolve it.
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - "**/*"
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
