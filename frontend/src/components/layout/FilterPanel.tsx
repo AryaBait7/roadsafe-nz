@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
-import { parseFilters, toSearchParams } from "@/lib/filters";
+import { parseFilters, toSearchParams, YEAR_RANGE_MESSAGE } from "@/lib/filters";
 import type { CrashFilters, FilterOptions } from "@/types";
 
 /**
@@ -19,6 +19,9 @@ import type { CrashFilters, FilterOptions } from "@/types";
  * resolution CAS publishes — a day picker would imply precision the dataset
  * does not have.
  */
+
+/** Ties both year selects to the one error message describing them. */
+const YEAR_ERROR_ID = "filter-year-range-error";
 
 function FilterForm({
   options,
@@ -48,7 +51,19 @@ function FilterForm({
       [key]: value === "" ? undefined : Number(value),
     }));
 
+  /**
+   * A reversed range is caught here, before it can become a navigation.
+   * Nothing is requested, so whatever the dashboard is showing stays on
+   * screen rather than being replaced by an empty or an error state — a
+   * mis-set dropdown should not cost you the view you were reading.
+   */
+  const yearRangeInvalid =
+    draft.yearFrom !== undefined &&
+    draft.yearTo !== undefined &&
+    draft.yearFrom > draft.yearTo;
+
   const apply = () => {
+    if (yearRangeInvalid) return;
     const query = toSearchParams(draft).toString();
     navigate(query ? `${pathname}?${query}` : pathname);
   };
@@ -77,21 +92,41 @@ function FilterForm({
         Filters
       </h2>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Select
-          label="Year from"
-          options={years}
-          placeholder="Earliest"
-          value={draft.yearFrom ?? ""}
-          onChange={(event) => setYear("yearFrom")(event.target.value)}
-        />
-        <Select
-          label="Year to"
-          options={years}
-          placeholder="Latest"
-          value={draft.yearTo ?? ""}
-          onChange={(event) => setYear("yearTo")(event.target.value)}
-        />
+      <div>
+        <div className="grid grid-cols-2 gap-2">
+          <Select
+            label="Year from"
+            options={years}
+            placeholder="Earliest"
+            value={draft.yearFrom ?? ""}
+            onChange={(event) => setYear("yearFrom")(event.target.value)}
+            invalid={yearRangeInvalid}
+            describedBy={yearRangeInvalid ? YEAR_ERROR_ID : undefined}
+          />
+          <Select
+            label="Year to"
+            options={years}
+            placeholder="Latest"
+            value={draft.yearTo ?? ""}
+            onChange={(event) => setYear("yearTo")(event.target.value)}
+            invalid={yearRangeInvalid}
+            describedBy={yearRangeInvalid ? YEAR_ERROR_ID : undefined}
+          />
+        </div>
+
+        {/* The message belongs with the controls that caused it: a banner at
+            the top of the panel, or a toast, makes the reader hunt for which
+            field is wrong. `role="alert"` announces it without moving focus
+            away from the select they are still using. */}
+        {yearRangeInvalid ? (
+          <p
+            id={YEAR_ERROR_ID}
+            role="alert"
+            className="mt-1.5 text-[11px] leading-snug text-safety-300"
+          >
+            {YEAR_RANGE_MESSAGE}
+          </p>
+        ) : null}
       </div>
 
       <Select
@@ -124,7 +159,7 @@ function FilterForm({
           size="sm"
           className="flex-1"
           onClick={apply}
-          disabled={unchanged || isPending}
+          disabled={unchanged || isPending || yearRangeInvalid}
         >
           {isPending ? (
             <span className="flex items-center justify-center gap-1.5">

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback } from "react";
 import { cn } from "@/lib/cn";
+import { INTRO_REPLAY_EVENT } from "./introEvents";
 import { LandingNav } from "./LandingNav";
 import { RoadScene } from "./RoadScene";
 import { useIntroSequence } from "./useIntroSequence";
@@ -15,15 +17,27 @@ import { useIntroSequence } from "./useIntroSequence";
  * decorative and hidden from assistive technology.
  */
 export function HeroIntro() {
-  const { phase, isMoving, skip, replay } = useIntroSequence();
+  const { phase, runId, skip, replay } = useIntroSequence();
 
   const titleVisible = phase === "title" || phase === "reveal" || phase === "done";
   const contentVisible = phase === "reveal" || phase === "done";
   const finished = phase === "done";
 
+  /**
+   * Replaying the intro should give back the whole opening, not just the
+   * road: the statistics below count up on arrival, and after a replay they
+   * would otherwise stay at their final values. The event is fired here
+   * rather than inside the hook because it is a page-level announcement, not
+   * part of the timeline.
+   */
+  const replayAll = useCallback(() => {
+    replay();
+    window.dispatchEvent(new Event(INTRO_REPLAY_EVENT));
+  }, [replay]);
+
   return (
     <section className="relative flex min-h-screen flex-col overflow-hidden">
-      <RoadScene phase={phase} isMoving={isMoving} />
+      <RoadScene phase={phase} runId={runId} />
       <LandingNav visible={contentVisible} />
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center">
@@ -39,7 +53,7 @@ export function HeroIntro() {
             something to move between, which is what makes the wordmark travel
             toward the viewer instead of just fading up in place. */}
         <h1
-          className="text-5xl font-semibold tracking-tight text-white transition-all duration-[1100ms] ease-out sm:text-7xl"
+          className="text-5xl font-semibold tracking-tight text-white transition-all duration-[700ms] ease-out sm:text-7xl"
           style={{
             transform: titleVisible
               ? "translateY(0) scale(1)"
@@ -78,7 +92,7 @@ export function HeroIntro() {
         {finished ? (
           <button
             type="button"
-            onClick={replay}
+            onClick={replayAll}
             className="rounded-md px-3 py-1.5 text-[11px] text-surface-400 transition-colors hover:bg-white/10 hover:text-white"
           >
             Replay intro

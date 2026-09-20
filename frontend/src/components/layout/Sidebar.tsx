@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { navItems } from "./nav-items";
 import { NavIcon } from "./NavIcon";
@@ -66,11 +66,17 @@ function SidebarContent({
     <>
       <Brand />
       <NavLinks onNavigate={onNavigate} />
-      {/* useSearchParams would otherwise opt the whole route out of static
-          rendering; suspending it keeps the shell prerendered. */}
-      <Suspense fallback={<div className="h-64" />}>
-        <FilterPanel options={options} />
-      </Suspense>
+      {/* No Suspense boundary. It was here because `useSearchParams` opts a
+          route out of static rendering, and suspending it kept the shell
+          prerendered — but since Stage 23 every page in this group is
+          `force-dynamic`, so there is no static render left to protect. What
+          the boundary did instead was make the filters arrive as streamed
+          content that the client has to reveal on an animation frame: in a
+          background tab, or any document that is not painting, that frame
+          never comes and the sidebar keeps showing an empty 64px box where
+          the filters should be. Rendering them inline puts the controls on
+          screen with the first paint. */}
+      <FilterPanel options={options} />
     </>
   );
 }

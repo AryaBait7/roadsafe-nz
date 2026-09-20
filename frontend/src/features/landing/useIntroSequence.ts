@@ -10,11 +10,17 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
  * for users who ask for reduced motion. CSS delays alone cannot be cancelled
  * mid-flight.
  *
- *   travel   0.0-3.0s  camera accelerates down the road
- *   slowing  3.0-4.2s  deceleration begins, sign is clearly approaching
- *   title    4.2-5.4s  arrival at the sign, which is now readable
- *   reveal   5.4-6.6s  strapline and call to action
+ *   travel   0.0-1.5s  camera accelerates down the road
+ *   slowing  1.5-2.4s  deceleration begins, sign is clearly approaching
+ *   title    2.4-3.2s  arrival at the sign, which is now readable
+ *   reveal   3.2-4.0s  strapline and call to action
  *   done              final resting state
+ *
+ * Four seconds end to end. The first version ran to 6.6s, which is a long
+ * time to hold someone at a door they have already decided to walk through —
+ * and an intro that plays on every visit has to be worth seeing twice. The
+ * shape is unchanged; it is the same journey at a pace that respects the
+ * visitor.
  *
  * The home page is the cinematic entry point, so the intro plays on **every**
  * visit to "/". It is deliberately not suppressed after the first play: an
@@ -24,10 +30,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 export type IntroPhase = "travel" | "slowing" | "title" | "reveal" | "done";
 
 const TIMELINE: { phase: IntroPhase; at: number }[] = [
-  { phase: "slowing", at: 3000 },
-  { phase: "title", at: 4200 },
-  { phase: "reveal", at: 5400 },
-  { phase: "done", at: 6600 },
+  { phase: "slowing", at: 1500 },
+  { phase: "title", at: 2400 },
+  { phase: "reveal", at: 3200 },
+  { phase: "done", at: 4000 },
 ];
 
 /**
@@ -97,7 +103,7 @@ export function useIntroSequence() {
     // each step.
   }, [runId]);
 
-  const isMoving = phase !== "done";
-
-  return { phase, isMoving, skip, replay };
+  // runId lets the scene restart its camera: the distance travelled lives
+  // inside its animation loop, so a replay has to re-run that effect.
+  return { phase, runId, skip, replay };
 }

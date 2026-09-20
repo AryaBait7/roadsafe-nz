@@ -99,10 +99,18 @@ describe("filters", () => {
     ]).toEqual([19_383, 1_415, 274]);
   });
 
-  it("swaps a reversed year range rather than matching nothing", async () => {
-    const forward = await get("/api/dashboard/totals?yearFrom=2015&yearTo=2018");
-    const reversed = await get("/api/dashboard/totals?yearFrom=2018&yearTo=2015");
-    expect(reversed.body.data).toEqual(forward.body.data);
+  it("refuses a reversed year range rather than answering a different question", async () => {
+    const { body } = await request(app)
+      .get("/api/dashboard/totals?yearFrom=2018&yearTo=2015")
+      .expect(400);
+
+    expect(body.error.code).toBe("invalid_filter");
+    expect(body.error.message).toBe("Start year cannot be later than end year.");
+  });
+
+  it("accepts a single-year range", async () => {
+    const { body } = await get("/api/dashboard/totals?yearFrom=2020&yearTo=2020");
+    expect(body.data.totalCrashes).toBeGreaterThan(0);
   });
 
   it("ignores unparseable values instead of failing", async () => {

@@ -151,9 +151,12 @@ export default async function MlInsightsPage() {
             <CardHeader>
               <div className="min-w-0">
                 <CardTitle>Prediction target</CardTitle>
+                {/* The column name itself is an internal detail of the
+                    pipeline, not something a reader needs; it stays in the
+                    API and the data dictionary, where it belongs. */}
                 <CardDescription>
-                  <code>{data.target}</code> —{" "}
-                  {data.positiveLabel.toLowerCase()}
+                  The model estimates whether a recorded crash is associated
+                  with a serious or fatal outcome.
                 </CardDescription>
               </div>
             </CardHeader>
@@ -606,7 +609,14 @@ export default async function MlInsightsPage() {
 
           {trained ? (
             <>
-              <Card className="xl:col-span-7">
+              {/* `self-start` because this is the one row whose two cards
+                  have genuinely different amounts to say: a five-row table
+                  beside the calibration write-up. Grid items stretch to the
+                  tallest in their row, which left 293px of measured emptiness
+                  inside this card's border. Letting it take its own height
+                  puts the gap outside the card, where it reads as spacing
+                  rather than as something missing. */}
+              <Card className="xl:col-span-7 xl:self-start">
                 <CardHeader>
                   <div className="min-w-0">
                     <CardTitle>How the candidates compared</CardTitle>

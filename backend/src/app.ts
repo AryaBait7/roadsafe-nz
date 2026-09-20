@@ -3,7 +3,7 @@ import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
 
 import { FixtureMissingError, fixtureStatus } from "./data/fixtures";
-import { parseFilters } from "./filters";
+import { InvalidFilterError, parseFilters } from "./filters";
 import type { CrashFilters } from "./types";
 import {
   getBaselineSevereRate,
@@ -32,6 +32,10 @@ import {
   getSummaryComparison,
 } from "./services/dashboardService";
 import { getDataDictionary } from "./services/datasetService";
+import {
+  getRoadSafetyUpdates,
+  UpdatesUnavailableError,
+} from "./services/updatesService";
 import {
   getFeatureImportance,
   getModelMetrics,
@@ -168,6 +172,11 @@ export function createApp() {
   // --- Dataset -----------------------------------------------------------
   app.get("/api/dataset/dictionary", send(() => getDataDictionary()));
 
+  // --- Road safety updates ------------------------------------------------
+  // The only route that reaches outside this process. It is cached upstream
+  // of the handler, so a burst of traffic is one request to NZTA at most.
+  app.get("/api/updates", send(() => getRoadSafetyUpdates()));
+
   app.use((request: Request, response: Response) => {
     response.status(404).json({
       error: { code: "not_found", message: `No route for ${request.method} ${request.path}` },
@@ -184,6 +193,25 @@ export function createApp() {
       // A missing fixture is an operator problem with a known fix, so its
       // message is safe and useful. Anything else is logged in full and
       // reported generically: internal paths and stack traces stay server-side.
+      // The caller's query was wrong, not our data. 400 with the reason, so
+      // a client can correct it rather than retry the same request.
+      if (error instanceof InvalidFilterError) {
+        response.status(400).json({
+          error: { code: "invalid_filter", message: error.message },
+        });
+        return;
+      }
+
+      // The external source is down and nothing was ever cached. The page
+      // says so; it does not invent items to fill the space.
+      if (error instanceof UpdatesUnavailableError) {
+        console.error(error.message);
+        response.status(503).json({
+          error: { code: "updates_unavailable", message: error.message },
+        });
+        return;
+      }
+
       if (error instanceof FixtureMissingError) {
         console.error(error.message);
         response.status(503).json({

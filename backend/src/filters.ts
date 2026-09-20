@@ -9,11 +9,31 @@ import type { CrashFilters, CrashSeverity } from "./types";
  * (`/api/crashes/trends?yearFrom=2015&region=Waikato+Region`), so Stage 23
  * changes nothing above the service layer.
  *
- * The API parses the same query keys the frontend already puts in the URL,
- * with the same rules: unknown values are dropped rather than rejected, and a
- * reversed year range is swapped. A hand-edited URL widens the result set
- * instead of erroring.
+ * The API parses the same query keys the frontend already puts in the URL.
+ * Unknown values are dropped rather than rejected, so a hand-edited URL
+ * degrades to a broader result set instead of an error page.
+ *
+ * A reversed year range is the one exception. It used to be swapped silently,
+ * which is friendly until you realise the caller asked one question and got
+ * the answer to another; for an API that is worse than a refusal. It is now
+ * a 400 with the same message the filter panel shows, so a client that skips
+ * the UI cannot quietly receive figures for a range it did not request.
  */
+
+/**
+ * The one message both ends show, so the inline error under the year controls
+ * and the API's refusal cannot drift apart.
+ */
+export const YEAR_RANGE_MESSAGE =
+  "Start year cannot be later than end year.";
+
+/** A filter the caller got wrong — answered with 400, not 500. */
+export class InvalidFilterError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidFilterError";
+  }
+}
 
 export const SEVERITIES: readonly CrashSeverity[] = [
   "Fatal Crash",
@@ -60,15 +80,13 @@ export function parseFilters(params: RawSearchParams): CrashFilters {
   const yearFrom = parseYear(params.yearFrom);
   const yearTo = parseYear(params.yearTo);
 
-  // A reversed range would silently match nothing; swap it instead.
-  const [from, to] =
-    yearFrom !== undefined && yearTo !== undefined && yearFrom > yearTo
-      ? [yearTo, yearFrom]
-      : [yearFrom, yearTo];
+  if (yearFrom !== undefined && yearTo !== undefined && yearFrom > yearTo) {
+    throw new InvalidFilterError(YEAR_RANGE_MESSAGE);
+  }
 
   return {
-    yearFrom: from,
-    yearTo: to,
+    yearFrom,
+    yearTo,
     region: firstValue(params.region),
     roadType: firstValue(params.roadType),
     speedEnvironment: firstValue(params.speedEnvironment),

@@ -14,6 +14,13 @@ import type { CrashFilters, CrashSeverity } from "@/types";
  * the client.
  */
 
+/**
+ * The one message both ends show, so the inline error under the year controls
+ * and the API's refusal cannot drift apart.
+ */
+export const YEAR_RANGE_MESSAGE =
+  "Start year cannot be later than end year.";
+
 export const SEVERITIES: readonly CrashSeverity[] = [
   "Fatal Crash",
   "Serious Crash",

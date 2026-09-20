@@ -4,6 +4,7 @@ import {
   LandingSections,
 } from "@/features/landing/LandingSections";
 import { getSummary } from "@/services/dashboardService";
+import { getRoadSafetyUpdates } from "@/services/updatesService";
 
 /**
  * Rendered per request: the data comes from the API, so the build must not
@@ -22,13 +23,19 @@ export const dynamic = "force-dynamic";
  * data source becomes the API.
  */
 export default async function LandingPage() {
-  const { data: summary } = await getSummary();
+  // In parallel: the updates call is the only one that leaves our own
+  // infrastructure, and it resolves to null rather than throwing if the
+  // source is down, so it cannot delay or break the rest of the page.
+  const [{ data: summary }, news] = await Promise.all([
+    getSummary(),
+    getRoadSafetyUpdates(),
+  ]);
 
   return (
     <>
       <main>
         <HeroIntro />
-        <LandingSections summary={summary} />
+        <LandingSections summary={summary} news={news} />
       </main>
       <LandingFooter />
     </>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Reveal } from "./Reveal";
 import { NewsSection } from "./NewsSection";
 import { CountUp, type CountUpFormat } from "@/components/ui/CountUp";
+import { INTRO_REPLAY_EVENT } from "./introEvents";
 import { NavIcon, type NavIconName } from "@/components/layout/NavIcon";
 import type { DashboardSummary, NewsItem } from "@/types";
 
@@ -54,14 +55,22 @@ const FEATURES: {
     description:
       "A severity model that estimates how serious a crash is likely to be, given that a crash has occurred.",
   },
+  {
+    title: "Reports & Data",
+    href: "/reports",
+    icon: "reports",
+    description:
+      "Explore reports, key summaries and the data dictionary behind the RoadSafe NZ analysis.",
+  },
 ];
 
 export function LandingSections({
   summary,
-  news = [],
+  news,
 }: {
   summary: DashboardSummary;
-  news?: NewsItem[];
+  /** null when the updates source could not be reached — see NewsSection. */
+  news: NewsItem[] | null;
 }) {
   // `format` is a name, not a function: this is a Server Component and only
   // serialisable props may cross into a Client Component.
@@ -69,6 +78,7 @@ export function LandingSections({
     label: string;
     value: number;
     format: CountUpFormat;
+    from?: number;
     prefix?: string;
   }[] = [
     {
@@ -90,9 +100,12 @@ export function LandingSections({
       label: "Years covered",
       value: summary.yearTo,
       // Only the end of the range counts up; animating both ends would show a
-      // nonsensical range on every intermediate frame. Years are unformatted —
-      // grouped thousands would render 2,026.
+      // nonsensical range on every intermediate frame. It runs from the start
+      // of the range rather than from zero, so every frame is a real range
+      // opening out — 2006–2006 through to 2006–2026, never 2006–431. Years
+      // are unformatted: grouped thousands would render 2,026.
       format: "plain",
+      from: summary.yearFrom,
       prefix: `${summary.yearFrom}–`,
     },
   ];
@@ -129,20 +142,24 @@ export function LandingSections({
                     aria-hidden
                     className="block h-0.5 w-7 rounded-full bg-safety-400"
                   />
-                  <dt className="mt-3 text-xs text-surface-500">{stat.label}</dt>
+                  <dt className="mt-3 text-xs text-surface-500">
+                    {stat.label}
+                  </dt>
                   <dd className="mt-1.5 text-3xl font-semibold text-navy-900 sm:text-4xl">
                     <CountUp
                       value={stat.value}
+                      from={stat.from}
                       format={stat.format}
                       prefix={stat.prefix}
+                      restartOn={INTRO_REPLAY_EVENT}
                     />
                   </dd>
                 </div>
               ))}
             </dl>
             <p className="mt-6 text-xs text-surface-500">
-              Figures are counts from the full CAS dataset. {summary.yearTo} is a
-              partial year.
+              Figures are counts from the full CAS dataset. {summary.yearTo} is
+              a partial year.
             </p>
           </Reveal>
         </div>
@@ -155,22 +172,24 @@ export function LandingSections({
               What you can explore
             </p>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-navy-900 sm:text-4xl">
-              Five ways into the data.
+              Six ways into the data.
             </h2>
           </Reveal>
 
-          {/* `items-stretch` plus `h-full` on each card keeps every card the
-              same height regardless of description length. */}
+          {/* Six cards fill a 3 x 2 grid exactly, collapsing to 2 columns on
+              tablets and 1 on phones. `items-stretch` plus `h-full` keeps every
+              card the same height regardless of description length, and the
+              description's `flex-1` pins "Open" to the same baseline. */}
           <div className="mt-12 grid items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((feature, index) => (
               <Reveal key={feature.href} delay={index * 80} className="h-full">
                 <Link
                   href={feature.href}
-                  className="group flex h-full flex-col rounded-lg border border-surface-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-400 hover:shadow-md"
+                  className="group flex h-full flex-col rounded-lg border border-surface-200 bg-white p-6 shadow-sm transition-all duration-200 ease-out hover:border-accent-400 hover:shadow-lg focus-visible:border-accent-400 focus-visible:shadow-lg motion-safe:hover:-translate-y-1.5 motion-safe:focus-visible:-translate-y-1.5"
                 >
                   <span
                     aria-hidden
-                    className="grid size-9 place-items-center rounded-md bg-accent-500/10 text-accent-600 transition-colors duration-200 group-hover:bg-accent-500/15"
+                    className="grid size-9 place-items-center rounded-md bg-accent-500/10 text-accent-600 transition-all duration-200 ease-out group-hover:bg-accent-500/15 motion-safe:group-hover:scale-105"
                   >
                     <NavIcon name={feature.icon} size={18} />
                   </span>
@@ -186,7 +205,7 @@ export function LandingSections({
                     Open
                     <span
                       aria-hidden
-                      className="transition-transform duration-200 group-hover:translate-x-0.5"
+                      className="transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
                     >
                       →
                     </span>

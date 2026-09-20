@@ -8,7 +8,14 @@ export interface NavItem {
   description: string;
 }
 
-/** Single source of truth for dashboard navigation — sidebar and drawer share it. */
+/**
+ * Single source of truth for dashboard navigation — sidebar and drawer share it.
+ *
+ * Map Explorer is deliberately absent: the standalone page and its route are
+ * untouched and still work, it is simply not offered as a primary
+ * destination. Geography is reached through the Hotspots map and the
+ * dashboard's map panel, which use the same components and the same API.
+ */
 export const navItems: readonly NavItem[] = [
   {
     label: "Dashboard",
@@ -21,12 +28,6 @@ export const navItems: readonly NavItem[] = [
     href: "/crash-trends",
     icon: "trends",
     description: "How crash volume and severity have shifted year to year.",
-  },
-  {
-    label: "Map Explorer",
-    href: "/map-explorer",
-    icon: "map",
-    description: "Crash locations across New Zealand, aggregated by area.",
   },
   {
     label: "Hotspots",

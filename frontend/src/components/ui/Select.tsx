@@ -5,6 +5,10 @@ interface SelectProps extends React.ComponentProps<"select"> {
   options: readonly string[];
   /** Shown as the "no filter applied" option. */
   placeholder?: string;
+  /** Marks the control as rejected, for both sighted and assistive users. */
+  invalid?: boolean;
+  /** Id of the message explaining why, announced with the control. */
+  describedBy?: string;
 }
 
 /**
@@ -17,6 +21,8 @@ export function Select({
   placeholder = "All",
   className,
   id,
+  invalid = false,
+  describedBy,
   ...props
 }: SelectProps) {
   const selectId = id ?? `select-${label.toLowerCase().replace(/\s+/g, "-")}`;
@@ -31,9 +37,15 @@ export function Select({
       </label>
       <select
         id={selectId}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
         className={cn(
-          "h-8 rounded-md border border-navy-600 bg-navy-800 px-2 text-xs text-white",
-          "hover:border-navy-500 focus:border-accent-400",
+          "h-8 rounded-md border bg-navy-800 px-2 text-xs text-white",
+          // Colour is not the only signal: the message below names the
+          // problem, and aria-invalid carries it to assistive technology.
+          invalid
+            ? "border-safety-400 focus:border-safety-300"
+            : "border-navy-600 hover:border-navy-500 focus:border-accent-400",
           className,
         )}
         {...props}
