@@ -4,7 +4,60 @@ Living log of what's done, what's in progress, and what's next. Updated as phase
 
 ## Current phase
 
-**Stage 23 (Frontend on the API) — complete. Stage 18 (PostgreSQL + PostGIS) — paused, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+**Stage 24 (AWS deployment) — API live on Lambda behind an API Gateway HTTP API; frontend hosting still to do. Stage 23 — complete. Stage 18 (PostgreSQL + PostGIS) — paused, blocked:** the code is written but has never run, because Docker Desktop fails to start on this machine. Resume steps are below.
+
+### Stage 24 — AWS deployment (API live, 2026-09-20)
+
+**The API runs on AWS.** Account 266176113933, ap-southeast-2 (Sydney), verified
+before anything was created.
+
+| Resource | Detail |
+|---|---|
+| `roadsafe-nz-api` (Lambda) | nodejs22.x, 512MB, 15s timeout, handler `dist/lambda.handler`, 1.55MiB package |
+| `roadsafe-nz-api` (API Gateway HTTP API) | `https://b8cg0r0763.execute-api.ap-southeast-2.amazonaws.com` — public, CORS GET |
+| `roadsafe-nz-api-lambda` (IAM role) | `AWSLambdaBasicExecutionRole` only — logs, nothing else |
+| `/aws/lambda/roadsafe-nz-api` | 7-day retention, set at creation |
+| `roadsafe-nz-data-266176113933` (S3) | Unchanged: private, 10 fixtures, 7.3MiB |
+| `roadsafe-nz-monthly` (Budget) | Unchanged, $10 USD |
+
+**The same Express app.** `src/lambda.ts` wraps `createApp()` with
+`@codegenie/serverless-express`; the only new dependency. `server.ts` still
+binds a port for local work, so one API serves both and the 28 backend tests
+cover what is deployed. The app is built at module scope, so a warm container
+reuses the parsed 5.9MB cube — measured 74ms cold, 3ms warm.
+
+**Fixtures are bundled into the package**, not read from S3 at runtime: 7.3MB
+inside a 50MB limit costs nothing, removes a runtime dependency and a set of
+IAM permissions, and keeps cold starts short. S3 remains the published
+artefact store.
+
+**Function URLs did not work and API Gateway replaced them.** A Function URL
+with `AuthType: NONE` and a textbook `Principal: "*"` /
+`lambda:FunctionUrlAuthType: NONE` resource policy returned 403 to every
+caller, from two different clients, across a delete-and-recreate of both the
+permission and the URL config. CloudWatch confirmed the cause was upstream of
+the function: **one invocation logged, and that was the IAM-authenticated CLI
+test** — no HTTP request ever reached the code. The account is not in an
+organisation, so no SCP or RCP explains it. Rather than keep debugging on the
+eve of a presentation, an HTTP API now fronts the same function; it worked
+first try. The dead Function URL and its public policy statement were deleted,
+so the function's only invoke permission is API Gateway, scoped to this API.
+
+**Verified live:** 705,609 / 41,263 / 6,182 / 6,911 / 280,236 national;
+Waikato 2020-2024 → 19,383 / 1,415 / 274; reversed year range → 400
+`invalid_filter`; XGBoost PR-AUC 0.152, ROC-AUC 0.675; `/api/map/crashes`
+gzips to 38,706 bytes in 0.73s; unknown route → 404.
+
+**The frontend now reads the deployed API.** `frontend/.env.local` sets
+`API_BASE_URL` to the HTTP API. Proved by stopping the local backend
+entirely: all nine routes still render real figures, 0.24-2.1s server-side
+including the trans-Tasman round trip. Deleting `.env.local` restores the
+local backend.
+
+**Not done: Amplify hosting.** It needs a connected Git repository for a
+Next.js SSR app — manual zip deploys are static-only, and every data page is
+`force-dynamic`. This repository has no remote, and connecting one to Amplify
+needs a browser OAuth step. Blocked on a decision, not on work.
 
 ### Stage 23 — Connect the frontend to the API (done 2026-09-18)
 
@@ -480,7 +533,7 @@ Seven requested changes, all against the existing components — no rebuild.
 | 21 | Explainability (SHAP) | ✅ Complete |
 | 22 | Node/Express REST API | ✅ Complete |
 | 23 | Connect frontend to the API | ✅ Complete |
-| 24 | AWS deployment | ⏭️ Next |
+| 24 | AWS deployment | 🟡 API live on Lambda + API Gateway; Amplify blocked on a Git remote |
 | 25 | CI/CD, security, monitoring |  |
 | 26 | Final testing |  |
 | 27 | Portfolio documentation |  |
