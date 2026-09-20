@@ -18,10 +18,17 @@ the app states the model's limits rather than overselling it.
   random ranking.
 - **Explainability (Stage 21):** SHAP contributions and a scenario explorer
   that shows how much evidence each combination actually has.
-- **API (Stage 22–23):** Express + TypeScript, 22 routes. The frontend reads
+- **API (Stage 22–23):** Express + TypeScript, 23 routes. The frontend reads
   everything through it; aggregation lives in one place.
+- **Live updates:** road-safety updates are read from the NZ Transport
+  Agency's open data catalogue, normalised and cached by the API.
+- **Deployed (Stage 24):** the API runs on AWS Lambda (ap-southeast-2) behind
+  an API Gateway HTTP API — try
+  [`/health`](https://b8cg0r0763.execute-api.ap-southeast-2.amazonaws.com/health)
+  or [national
+  totals](https://b8cg0r0763.execute-api.ap-southeast-2.amazonaws.com/api/dashboard/totals).
 - **Blocked:** PostgreSQL + PostGIS (Stage 18) — Docker will not start here.
-- **Planned:** explainability, API and AWS (Stages 21–27).
+- **Planned:** frontend hosting, CI/CD and monitoring (Stages 24–27).
 
 Details: [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) · design:
 [ARCHITECTURE.md](ARCHITECTURE.md) · reasoning: [DECISIONS.md](DECISIONS.md) ·
@@ -36,7 +43,8 @@ columns: [DATA_DICTIONARY.md](DATA_DICTIONARY.md)
 | Database | PostgreSQL + PostGIS | Planned |
 | Analytics + ML | pandas, statsmodels, scikit-learn, XGBoost, SHAP | Built |
 | API | Node.js / Express 5, TypeScript, supertest | Built |
-| Cloud | AWS (S3, RDS, Amplify, Secrets Manager, CloudWatch), GitHub Actions | Planned |
+| Cloud | AWS Lambda + API Gateway + S3 + CloudWatch (ap-southeast-2) | Deployed |
+| Cloud (planned) | Amplify hosting, RDS, GitHub Actions | Planned |
 
 ## Structure
 
@@ -87,10 +95,14 @@ It reads the pipeline's aggregates (`FIXTURES_DIR`, default
 `../data/fixtures`) until the Stage 18 database is available. See
 `backend/.env.example` for `PORT` and `CORS_ORIGIN`.
 
+`src/lambda.ts` wraps the same app for AWS Lambda, so the deployed API and
+the local one are the same code and the same tests.
+
 ## Running the frontend
 
 **Start the API first** — the pages fetch from it (`API_BASE_URL`, default
-`http://localhost:4000`). From `frontend/`:
+`http://localhost:4000`). To read the deployed API instead, put its URL in
+`frontend/.env.local` and no backend is needed locally. From `frontend/`:
 
 ```bash
 npm install
@@ -108,7 +120,8 @@ npm test
 21. ✅ Explainability (SHAP)
 22. ✅ Node/Express REST API
 23. ✅ Connect frontend to the API
-24–26. 🔲 AWS deployment, CI/CD, security, monitoring, final testing
+24. 🟡 AWS deployment — API live on Lambda + API Gateway; frontend hosting to do
+25–26. 🔲 CI/CD, security, monitoring, final testing
 27. 🔲 Portfolio documentation
 
 *RoadSafe NZ is a portfolio project, not an official NZTA service.*
