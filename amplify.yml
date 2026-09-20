@@ -22,6 +22,12 @@ applications:
       phases:
         preBuild:
           commands:
+            # Pin the runtime. Next.js 16 needs a modern Node, and an image
+            # default drifting under it is the usual way an Amplify build
+            # fails for reasons that have nothing to do with the code.
+            # `|| true` so a build image without nvm still proceeds.
+            - nvm use 22 || true
+            - node --version
             # `ci` rather than `install`: builds should use the committed
             # lockfile exactly, not re-resolve it.
             - npm ci
