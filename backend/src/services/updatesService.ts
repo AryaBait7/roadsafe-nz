@@ -142,6 +142,25 @@ function itemIdOf(entry: DcatDataset): string {
   return match ? match[1] : (entry.identifier ?? entry.landingPage ?? "");
 }
 
+/**
+ * Where "Read more" should actually land.
+ *
+ * The catalogue's `landingPage` is the bare dataset URL, and ArcGIS Hub
+ * redirects that to `/explore` — its *map viewer*. Measured on the live
+ * portal: the bare link settles with 115 characters of navigation chrome and
+ * no title, summary or description, which is why the card looked broken when
+ * you followed it. The same dataset's `/about` view settles with 4,700
+ * characters: title, publisher, summary, the lot.
+ *
+ * So the link is pointed at `/about` explicitly. Only the plain dataset form
+ * is rewritten — anything the portal already deep-links is left alone, so a
+ * future catalogue change cannot have a second path glued onto it.
+ */
+function readMoreUrl(landingPage: string): string {
+  const trimmed = landingPage.replace(/\/+$/, "");
+  return /\/datasets\/[^/]+$/.test(trimmed) ? `${trimmed}/about` : trimmed;
+}
+
 function normalise(datasets: DcatDataset[]): RoadSafetyUpdate[] {
   return datasets
     .filter((entry) => {
@@ -175,7 +194,7 @@ function normalise(datasets: DcatDataset[]): RoadSafetyUpdate[] {
         // The portal publishes under the agency's former name; the agency it
         // is today is what a reader should see.
         source: entry.publisher?.name?.replace(/^Waka Kotahi$/, "NZ Transport Agency") ?? "NZ Transport Agency",
-        sourceUrl: entry.landingPage as string,
+        sourceUrl: readMoreUrl(entry.landingPage as string),
       };
     });
 }

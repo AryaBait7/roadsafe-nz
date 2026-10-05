@@ -53,11 +53,51 @@ describe("road safety updates", () => {
       icon: "trends",
       publishedAt: "2026-09-14T21:34:00.000Z",
       source: "NZ Transport Agency",
-      sourceUrl: "https://opendata-nzta.opendata.arcgis.com/datasets/NZTA::cas",
+      // "Read more" goes to the description, not the map viewer.
+      sourceUrl:
+        "https://opendata-nzta.opendata.arcgis.com/datasets/NZTA::cas/about",
     });
     // HTML from the source never reaches the page as markup.
     expect(data[0].summary).toBe("Crash data for New Zealand.");
     expect(meta.source).toBe("real");
+  });
+
+  it("links to the dataset's description, not its map viewer", async () => {
+    vi.stubGlobal(
+      "fetch",
+      respondWith({
+        dataset: [
+          dataset({ landingPage: "https://example.govt.nz/datasets/NZTA::cas" }),
+        ],
+      }),
+    );
+
+    const { data } = await getRoadSafetyUpdates();
+
+    // The bare dataset URL redirects to ArcGIS Hub's /explore map view, which
+    // renders navigation chrome and nothing a reader wants.
+    expect(data[0].sourceUrl).toBe(
+      "https://example.govt.nz/datasets/NZTA::cas/about",
+    );
+  });
+
+  it("leaves an already deep-linked page alone", async () => {
+    vi.stubGlobal(
+      "fetch",
+      respondWith({
+        dataset: [
+          dataset({
+            landingPage: "https://example.govt.nz/datasets/NZTA::cas/about",
+          }),
+        ],
+      }),
+    );
+
+    const { data } = await getRoadSafetyUpdates();
+
+    expect(data[0].sourceUrl).toBe(
+      "https://example.govt.nz/datasets/NZTA::cas/about",
+    );
   });
 
   it("keeps only road-safety datasets", async () => {
