@@ -7,6 +7,19 @@ are *associated with* serious outcomes. A crash-severity model (XGBoost) is
 trained and evaluated on held-out years; every figure shown is measured, and
 the app states the model's limits rather than overselling it.
 
+## Live
+
+| | |
+|---|---|
+| **Site** | **https://roadsafe-nz-nine.vercel.app** |
+| API base | `https://b8cg0r0763.execute-api.ap-southeast-2.amazonaws.com` |
+| API health | [`/health`](https://b8cg0r0763.execute-api.ap-southeast-2.amazonaws.com/health) · [national totals](https://b8cg0r0763.execute-api.ap-southeast-2.amazonaws.com/api/dashboard/totals) |
+
+The frontend is served from Vercel (Sydney) and renders per request against
+the API, which runs as an Express app on AWS Lambda behind an API Gateway
+HTTP API in ap-southeast-2. Both sit in the same region, so the hop between
+them is local. A cold Lambda takes about a second on the first request.
+
 ## Status
 
 - **Frontend: complete.** Nine pages (landing, dashboard, trends, map, hotspots,
@@ -22,13 +35,10 @@ the app states the model's limits rather than overselling it.
   everything through it; aggregation lives in one place.
 - **Live updates:** road-safety updates are read from the NZ Transport
   Agency's open data catalogue, normalised and cached by the API.
-- **Deployed (Stage 24):** the API runs on AWS Lambda (ap-southeast-2) behind
-  an API Gateway HTTP API — try
-  [`/health`](https://b8cg0r0763.execute-api.ap-southeast-2.amazonaws.com/health)
-  or [national
-  totals](https://b8cg0r0763.execute-api.ap-southeast-2.amazonaws.com/api/dashboard/totals).
+- **Deployed (Stage 24):** frontend on Vercel, API on AWS Lambda behind an
+  API Gateway HTTP API. See the links above.
 - **Blocked:** PostgreSQL + PostGIS (Stage 18) — Docker will not start here.
-- **Planned:** frontend hosting, CI/CD and monitoring (Stages 24–27).
+- **Planned:** CI/CD and monitoring (Stages 25–27).
 
 Details: [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) · design:
 [ARCHITECTURE.md](ARCHITECTURE.md) · reasoning: [DECISIONS.md](DECISIONS.md) ·
@@ -43,8 +53,9 @@ columns: [DATA_DICTIONARY.md](DATA_DICTIONARY.md)
 | Database | PostgreSQL + PostGIS | Planned |
 | Analytics + ML | pandas, statsmodels, scikit-learn, XGBoost, SHAP | Built |
 | API | Node.js / Express 5, TypeScript, supertest | Built |
+| Hosting | Vercel (Next.js SSR) | Deployed |
 | Cloud | AWS Lambda + API Gateway + S3 + CloudWatch (ap-southeast-2) | Deployed |
-| Cloud (planned) | Amplify hosting, RDS, GitHub Actions | Planned |
+| Cloud (planned) | RDS, GitHub Actions | Planned |
 
 ## Structure
 
@@ -106,9 +117,13 @@ the local one are the same code and the same tests.
 
 ```bash
 npm install
-npm run dev -- --port 3100
+npm run dev:3100
 npm test
 ```
+
+`dev:3100` rather than `npm run dev -- --port 3100`: PowerShell strips the
+`--`, so the port arrives as a directory name and Next fails with "Invalid
+project directory provided".
 
 ## Roadmap
 
@@ -120,7 +135,7 @@ npm test
 21. ✅ Explainability (SHAP)
 22. ✅ Node/Express REST API
 23. ✅ Connect frontend to the API
-24. 🟡 AWS deployment — API live on Lambda + API Gateway; frontend hosting to do
+24. ✅ Deployment — API on AWS Lambda + API Gateway, frontend on Vercel
 25–26. 🔲 CI/CD, security, monitoring, final testing
 27. 🔲 Portfolio documentation
 
